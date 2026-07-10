@@ -1,0 +1,11 @@
+{
+  "project": "p2p-bingo",
+  "network": "testnet",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "contractId": "CBMENYQVO6SC3AQEKB3EZFII6TSWBFD4IBMF5JXHNZ7TKY6WKKFH2YLA",
+  "wasmHash": "759ab7c371143e0ed318b8e9a55800edb84ce73cbde668236c0ad177b8b9a58d",
+  "deployer": "GABNO2DQP232FHOSHC6NWEI5BP5FE2E75FO6EX4SBPYIB2ABFDDZB7GH",
+  "explorer": "https://stellar.expert/explorer/testnet/contract/CBMENYQVO6SC3AQEKB3EZFII6TSWBFD4IBMF5JXHNZ7TKY6WKKFH2YLA",
+  "functions": ["create_game", "join_game", "draw_number", "claim_bingo", "get_game", "get_games"]
+}

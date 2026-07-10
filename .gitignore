@@ -1,0 +1,16 @@
+# Rust / Soroban build artifacts
+target/
+**/*.rs.bk
+
+# Stellar deployer secret key (JANGAN commit secret key ke git!)
+.deployer-secret
+walletdev.key
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+node_modules/
+
+# OS
+.DS_Store
