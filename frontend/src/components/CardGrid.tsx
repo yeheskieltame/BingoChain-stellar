@@ -1,4 +1,4 @@
-import { COLS } from "../lib/stellar";
+const COLS = ["B", "I", "N", "G", "O"] as const;
 
 interface Props {
   card: number[];

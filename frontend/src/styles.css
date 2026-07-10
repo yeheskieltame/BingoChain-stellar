@@ -188,6 +188,22 @@ button { font-family: inherit; }
 .tag--dev { background: rgba(61, 240, 255, 0.16); color: var(--cyan); }
 .tag--freighter { background: rgba(255, 210, 61, 0.18); color: var(--gold); }
 
+.chip--ghost { cursor: pointer; color: var(--muted); }
+.chip--ghost:hover { color: var(--text); border-color: var(--line-strong); }
+.chip--warn {
+  height: auto;
+  min-height: 34px;
+  padding: 8px 13px;
+  max-width: 360px;
+  white-space: normal;
+  line-height: 1.35;
+  color: var(--gold);
+  background: rgba(255, 210, 61, 0.12);
+  border-color: rgba(255, 210, 61, 0.35);
+}
+
+.placeholder-main { margin-top: 40px; }
+
 /* ================================  HERO  =============================== */
 
 .hero { padding: 54px 0 40px; max-width: 760px; }

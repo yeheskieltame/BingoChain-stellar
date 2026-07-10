@@ -1,4 +1,10 @@
-import { ballColumn } from "../lib/stellar";
+const COLS = ["B", "I", "N", "G", "O"] as const;
+
+/** The B-I-N-G-O column letter for a drawn number (1..75). */
+function ballColumn(n: number): string {
+  if (n < 1 || n > 75) return "";
+  return COLS[Math.floor((n - 1) / 15)];
+}
 
 interface Props {
   n: number;
