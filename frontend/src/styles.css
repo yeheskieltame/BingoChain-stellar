@@ -190,6 +190,9 @@ button { font-family: inherit; }
 
 .chip--ghost { cursor: pointer; color: var(--muted); }
 .chip--ghost:hover { color: var(--text); border-color: var(--line-strong); }
+.chip--balance { cursor: pointer; color: var(--text); }
+.chip--balance:hover { border-color: var(--line-strong); }
+.chip--balance:disabled { cursor: default; }
 .chip--warn {
   height: auto;
   min-height: 34px;
