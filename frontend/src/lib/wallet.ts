@@ -60,7 +60,12 @@ export async function disconnectWallet(): Promise<void> {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-/** Silently look up an already-granted connection, used to reconnect on load. */
+/**
+ * Silently look up an already-granted connection, used to reconnect on load.
+ * Throws WrongNetworkError if Freighter is connected but sitting on the wrong
+ * network, so the caller can show the wrong-network state instead of
+ * silently reconnecting as if all were fine.
+ */
 export async function getConnectedAddress(): Promise<string | null> {
   if (localStorage.getItem(STORAGE_KEY) !== "1") return null;
 
@@ -69,6 +74,8 @@ export async function getConnectedAddress(): Promise<string | null> {
 
   const res = await getAddress();
   if (res.error || !res.address) return null;
+
+  await assertTestnet();
 
   return res.address;
 }

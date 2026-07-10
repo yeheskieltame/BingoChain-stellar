@@ -15,12 +15,18 @@ export function useWallet(): UseWalletResult {
   const [error, setError] = useState<string | null>(null);
 
   // Silent reconnect: if the user connected before on this device, pick the
-  // wallet back up without prompting Freighter again.
+  // wallet back up without prompting Freighter again. If Freighter has since
+  // switched networks, surface the wrong-network error instead of connecting
+  // as if nothing changed.
   useEffect(() => {
     let cancelled = false;
-    getConnectedAddress().then((addr) => {
-      if (!cancelled && addr) setAddress(addr);
-    });
+    getConnectedAddress()
+      .then((addr) => {
+        if (!cancelled && addr) setAddress(addr);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      });
     return () => {
       cancelled = true;
     };

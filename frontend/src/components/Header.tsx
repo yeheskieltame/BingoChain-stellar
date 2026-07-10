@@ -9,7 +9,7 @@ function truncateAddress(address: string): string {
 
 export default function Header() {
   const { address, connecting, connect, disconnect, error } = useWallet();
-  const { balance, loading, refresh } = useBalance(address);
+  const { balance, loading, error: balanceError, refresh } = useBalance(address);
 
   return (
     <header className="masthead">
@@ -34,13 +34,15 @@ export default function Header() {
         {address ? (
           <>
             <button
-              className="chip chip--balance"
+              className={`chip ${balanceError ? "chip--warn" : "chip--balance"}`}
               onClick={refresh}
               title="Refresh balance"
               disabled={loading}
             >
               {loading && balance === null ? (
                 <Spinner size={13} />
+              ) : balanceError ? (
+                "couldn't load balance, retry"
               ) : balance === null ? (
                 "unfunded account, use friendbot"
               ) : (
