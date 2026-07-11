@@ -1,5 +1,5 @@
-import { useBalance } from "../hooks/useBalance";
-import { useWallet } from "../hooks/useWallet";
+import type { UseBalanceResult } from "../hooks/useBalance";
+import type { UseWalletResult } from "../hooks/useWallet";
 import { AlertIcon, RefreshIcon, Spinner, WalletIcon } from "./Icons";
 
 function truncateAddress(address: string): string {
@@ -7,9 +7,16 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
-export default function Header() {
-  const { address, connecting, connect, disconnect, error } = useWallet();
-  const { balance, loading, error: balanceError, refresh } = useBalance(address);
+interface HeaderProps {
+  // Wallet and balance state lives in App so the send flow can refresh the
+  // header balance after a confirmed payment.
+  wallet: UseWalletResult;
+  balanceState: UseBalanceResult;
+}
+
+export default function Header({ wallet, balanceState }: HeaderProps) {
+  const { address, connecting, connect, disconnect, error } = wallet;
+  const { balance, loading, error: balanceError, refresh } = balanceState;
 
   return (
     <header className="masthead">
