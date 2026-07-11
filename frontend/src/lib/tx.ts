@@ -1,7 +1,9 @@
 // Transaction state machine shared by every flow that submits a transaction,
-// classic payments now, Soroban contract calls later. Each useTx run passes
+// classic payments and Soroban contract calls alike. Each useTx run passes
 // its transport a scoped ReportPhase callback, so concurrent consumers
 // (lobby, game room, withdraw card) cannot cross wires.
+
+import type { AppError } from "./errors";
 
 export type TxState =
   | { phase: "idle" }
@@ -9,7 +11,10 @@ export type TxState =
   | { phase: "signing" }
   | { phase: "submitting" }
   | { phase: "success"; hash: string }
-  | { phase: "error"; message: string };
+  // kind lets the UI style wallet-declined, contract, network and unknown
+  // errors distinctly. Optional because classic Horizon failures below are
+  // mapped for their message text only, not every one carries a kind.
+  | { phase: "error"; message: string; kind?: AppError["kind"] };
 
 export type TxPhase = "building" | "signing" | "submitting";
 

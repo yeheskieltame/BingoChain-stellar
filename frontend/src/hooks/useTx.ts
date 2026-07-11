@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mapError, errorMessage } from "../lib/errors";
 import { mapTxError, type ReportPhase, type TxState } from "../lib/tx";
 
 export interface UseTxResult {
@@ -48,7 +49,15 @@ export function useTx(): UseTxResult {
       const hash = await fn(report);
       if (mounted.current) setState({ phase: "success", hash });
     } catch (err) {
-      if (mounted.current) setState({ phase: "error", message: mapTxError(err) });
+      if (mounted.current) {
+        const appError = mapError(err);
+        // errors.ts covers the contract/wallet/network classes with the
+        // friendly hint text; anything it calls "unknown" falls back to
+        // tx.ts's Horizon-specific mapping (op_underfunded and friends),
+        // which errors.ts intentionally does not know about.
+        const message = appError.kind === "unknown" ? mapTxError(err) : errorMessage(appError);
+        setState({ phase: "error", message, kind: appError.kind });
+      }
     } finally {
       settled = true;
       inFlight.current = false;
