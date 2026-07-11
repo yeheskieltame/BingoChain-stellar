@@ -1,5 +1,7 @@
 # BINGO·P2P — On-chain Bingo on Stellar
 
+[![CI](https://github.com/yeheskieltame/BingoChain-stellar/actions/workflows/ci.yml/badge.svg)](https://github.com/yeheskieltame/BingoChain-stellar/actions/workflows/ci.yml)
+
 **Peer-to-peer Bingo, settled on-chain.** A Soroban smart contract on the
 Stellar network runs the whole game — dealing cards, calling balls, and
 verifying wins. No server, no house: anyone can open a table, anyone can join,
