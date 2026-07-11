@@ -128,6 +128,10 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
         </div>
       )}
 
+      {(arena.state.tag === "Created" || arena.state.tag === "Committed") && (
+        <CancelControl arena={arena} address={address} onChanged={handleChanged} />
+      )}
+
       {arena.state.tag === "Settled" && (
         <div className="state">
           <span className="state-art" aria-hidden />
@@ -210,6 +214,62 @@ function CreatedRoom({
   }
 
   return <BoardSetup arenaId={arena.id} address={address} onCommitted={onCommitted} />;
+}
+
+/**
+ * Escape hatch for stalled tables. Shown to the creator while the table is
+ * still filling, and to anyone once the 24 hour join window has passed on a
+ * Created or Committed table (a full table whose opening call never came).
+ * The contract enforces the same rules; this only decides visibility.
+ */
+function CancelControl({
+  arena,
+  address,
+  onChanged,
+}: {
+  arena: Arena;
+  address: string | null;
+  onChanged(): void;
+}) {
+  const cancelTx = useTx();
+
+  const windowPassed = Date.now() / 1000 > Number(arena.created_at) + 86_400;
+  const isCreator = !!address && arena.creator === address;
+  const visible = !!address && ((arena.state.tag === "Created" && isCreator) || windowPassed);
+  if (!visible) return null;
+
+  const busy =
+    cancelTx.state.phase === "building" || cancelTx.state.phase === "signing" || cancelTx.state.phase === "submitting";
+
+  function cancelTable() {
+    if (!address || busy) return;
+    void cancelTx.run(async (report) => {
+      report("building");
+      const client = arenaClient(address);
+      const tx = await client.cancel_arena({ arena_id: arena.id, caller: address });
+      unwrapResult(tx.result, simulationError(tx));
+
+      const { hash, result } = await signAndSubmit(tx, address, report);
+      unwrapResult(result);
+      onChanged();
+      return hash;
+    });
+  }
+
+  return (
+    <section className="panel">
+      <p className="panel-label">cancel table</p>
+      <p className="call-note">
+        {arena.state.tag === "Committed"
+          ? "This table filled but nobody opened play. Cancelling refunds every seated stake to earnings."
+          : "Cancelling closes this table and refunds every seated stake to earnings."}
+      </p>
+      <button type="button" className="btn btn--ghost btn--block" onClick={cancelTable} disabled={busy}>
+        {busy ? "cancelling" : "cancel table"}
+      </button>
+      <TxStatus state={cancelTx.state} onRetry={cancelTx.reset} />
+    </section>
+  );
 }
 
 function PlayRoom({

@@ -7,7 +7,7 @@ export * as rpc from "@stellar/stellar-sdk/rpc";
 export declare const networks: {
     readonly testnet: {
         readonly networkPassphrase: "Test SDF Network ; September 2015";
-        readonly contractId: "CBCW77BY44FCNXB2BKMKDNRP3QBWYKZ25NCLHHIFSBDJFHTSILLBD4MJ";
+        readonly contractId: "CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW";
     };
 };
 /**
@@ -208,9 +208,13 @@ export interface Client {
     }, options?: MethodOptions) => Promise<AssembledTransaction<i128>>;
     /**
      * Construct and simulate a cancel_arena transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     * Cancel an unfilled (Created) arena and refund every joined player through
-     * the earnings ledger. The creator may cancel anytime; anyone may cancel
-     * once the join window has elapsed.
+     * Cancel a stalled arena and refund every joined player through the
+     * earnings ledger. Authorization matrix: a Created (unfilled) arena may be
+     * cancelled by its creator anytime, or by anyone once the join window has
+     * elapsed; a Committed (full but never called) arena may be cancelled by
+     * anyone, creator included, only after the join window, so stakes cannot
+     * stay stranded when the first player to act never calls. Early attempts
+     * get CancelNotAllowed; a Playing or later arena gets WrongState.
      */
     cancel_arena: ({ arena_id, caller }: {
         arena_id: u32;

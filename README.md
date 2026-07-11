@@ -87,7 +87,7 @@ to Stellar testnet.
 ### Build and test the contract
 
 ```bash
-cargo test                                     # 33 tests, contracts/bingo/src/test.rs and board.rs
+cargo test                                     # 36 tests, contracts/bingo/src/test.rs and board.rs
 cargo build --target wasm32v1-none --release -p bingo
 ```
 
@@ -159,21 +159,22 @@ pnpm dev
 | CI on every push and pull request: format, lint, test, build for contract and frontend | `.github/workflows/ci.yml` |
 | A repeatable, idempotent deploy workflow | `scripts/deploy.sh` |
 | Mobile-first responsive design, loading and error states, no layout jumps | `frontend/src/styles.css`, component markup across `frontend/src/components` |
-| Contract tests and frontend unit tests | `contracts/bingo/src/test.rs` (33 tests), `frontend/src/lib/commit.test.ts`, `frontend/src/lib/errors.test.ts` |
+| Contract tests and frontend unit tests | `contracts/bingo/src/test.rs` (36 tests), `frontend/src/lib/commit.test.ts`, `frontend/src/lib/errors.test.ts` |
 | Documentation and a working demo script | this file |
 
 ## Live deployment (testnet)
 
-- Contract: `CBCW77BY44FCNXB2BKMKDNRP3QBWYKZ25NCLHHIFSBDJFHTSILLBD4MJ`
-- Explorer: https://stellar.expert/explorer/testnet/contract/CBCW77BY44FCNXB2BKMKDNRP3QBWYKZ25NCLHHIFSBDJFHTSILLBD4MJ
+- Contract: `CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW`
+- Explorer: https://stellar.expert/explorer/testnet/contract/CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW
 - Network: `Test SDF Network ; September 2015`
 - Native XLM token contract: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
 - Protocol fee: 200 basis points (2 percent), capped in the contract at 500 (5 percent)
 - Minimum stake per player: 10,000,000 stroops (1 XLM)
 
-`commit_board`, `call_number`, a rejected out-of-turn call, `claim_bingo`,
-`reveal_board`, `settle`, and `withdraw` were all exercised end to end
-against this exact deployment during development, on arena ids 2 and 3.
+`create_arena`, `commit_board`, `call_number`, `claim_bingo`,
+`reveal_board`, `settle`, and `withdraw` were exercised end to end against
+this exact deployment on arena id 1, and a rejected early `cancel_arena`
+(`CancelNotAllowed`) was probed on arena id 2.
 
 ## Demo script (two players)
 
@@ -218,6 +219,10 @@ one browser with two Freighter accounts you switch between).
   reconstruct the salt: the stake is forfeit at settlement.
 - The reveal window has no notifications. The 24 hour countdown is shown in
   the UI, but nothing pings a player who does not come back to the tab.
+- A table that stalls before the first call is not stuck forever, but it is
+  slow to unwind: once the 24 hour join window passes, anyone can call
+  `cancel_arena` on a Created or Committed table and every seated stake goes
+  back to its player's earnings balance.
 - Testnet only. The deployed contract, its stakes, and its keys have no real
   value. This has not had a security review and should not be pointed at
   mainnet as is.

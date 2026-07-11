@@ -3,12 +3,12 @@
   "network": "testnet",
   "networkPassphrase": "Test SDF Network ; September 2015",
   "rpcUrl": "https://soroban-testnet.stellar.org",
-  "contractId": "CBCW77BY44FCNXB2BKMKDNRP3QBWYKZ25NCLHHIFSBDJFHTSILLBD4MJ",
-  "wasmHash": "db10afcb6fb9eac28a9ea87dbb2e2af7a20384da4cfb096bc3da3acf7b16233d",
+  "contractId": "CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW",
+  "wasmHash": "a70e3fe517d8cdc11def805c0cf5612646b421ac599ffd7dfe47f719046eb752",
   "deployer": "GABNO2DQP232FHOSHC6NWEI5BP5FE2E75FO6EX4SBPYIB2ABFDDZB7GH",
   "token": "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
   "feeBps": 200,
-  "explorer": "https://stellar.expert/explorer/testnet/contract/CBCW77BY44FCNXB2BKMKDNRP3QBWYKZ25NCLHHIFSBDJFHTSILLBD4MJ",
+  "explorer": "https://stellar.expert/explorer/testnet/contract/CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW",
   "functions": ["create_arena", "commit_board", "cancel_arena", "call_number", "claim_bingo", "reveal_board", "settle", "withdraw", "get_arena", "arena_count", "commit_of", "earnings_of", "config", "revealed_board_of"],
-  "deployedAt": "2026-07-11T04:46:32Z"
+  "deployedAt": "2026-07-11T18:19:15Z"
 }
