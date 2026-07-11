@@ -1,6 +1,7 @@
 import type { Arena } from "bingo-client";
 import CreateArenaForm from "./CreateArenaForm";
 import { RefreshIcon, UsersIcon } from "./Icons";
+import { stroopsToXlm, truncateAddress } from "../lib/format";
 
 interface LobbyProps {
   address: string | null;
@@ -12,20 +13,8 @@ interface LobbyProps {
   onCreated(id: number): void;
 }
 
-function stroopsToXlm(stroops: bigint): string {
-  const whole = stroops / 10_000_000n;
-  const frac = stroops % 10_000_000n;
-  if (frac === 0n) return whole.toString();
-  const fracStr = frac.toString().padStart(7, "0").replace(/0+$/, "");
-  return `${whole}.${fracStr}`;
-}
-
-function truncateAddress(address: string): string {
-  if (address.length <= 10) return address;
-  return `${address.slice(0, 4)}...${address.slice(-4)}`;
-}
-
-const STATE_LABEL: Record<Arena["state"]["tag"], string> = {
+/** Shared with GameRoom, which shows the same badge in the room header. */
+export const STATE_LABEL: Record<Arena["state"]["tag"], string> = {
   Created: "open",
   Committed: "sealed",
   Playing: "playing",
