@@ -86,11 +86,13 @@ export default function EarningsCard({ address }: EarningsCardProps) {
           {loadError ? (
             <p className="field-error">{loadError}</p>
           ) : (
-            <p className="earnings-amount mono">{earnings === null ? "..." : `${stroopsToXlm(earnings)} XLM`}</p>
+            <p className="earnings-amount">
+              {earnings === null ? <span className="skel skel--stake" aria-label="Loading" /> : `${stroopsToXlm(earnings)} XLM`}
+            </p>
           )}
         </div>
         <button type="button" className="btn btn--primary" onClick={onWithdraw} disabled={!withdrawable || busy}>
-          <TrophyIcon size={14} /> {busy ? "withdrawing..." : "withdraw"}
+          <TrophyIcon size={14} /> {busy ? "withdrawing" : "withdraw"}
         </button>
       </div>
       <TxStatus state={tx.state} onRetry={tx.reset} />

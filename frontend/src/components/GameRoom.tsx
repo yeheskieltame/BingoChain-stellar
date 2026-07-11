@@ -22,6 +22,16 @@ interface GameRoomProps {
 
 const BOARD_NUMBERS = Array.from({ length: 25 }, (_, i) => i + 1);
 
+/** "1st", "2nd", "3rd", "4th"... for the call-order screen reader labels. */
+function addOrdinal(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n}st`;
+  if (mod10 === 2 && mod100 !== 12) return `${n}nd`;
+  if (mod10 === 3 && mod100 !== 13) return `${n}rd`;
+  return `${n}th`;
+}
+
 /**
  * The live game room. Gameplay state (who is seated, the turn, the call
  * order, the reveal deadline) all comes from the arena itself via useArena,
@@ -65,14 +75,21 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
   if (loading && !arena) {
     return (
       <RoomShell arenaId={arenaId} onBack={onBack}>
-        <p className="state-msg">Loading arena...</p>
+        <div className="panel room-skel" aria-label="Loading table">
+          <span className="skel skel--label" />
+          <span className="skel skel--board" />
+          <span className="skel skel--line" />
+        </div>
       </RoomShell>
     );
   }
   if (!arena) {
     return (
       <RoomShell arenaId={arenaId} onBack={onBack}>
-        <p className="field-error">{error ? errorMessage(error) : "That arena does not exist."}</p>
+        <div className="state">
+          <p className="state-title">No table here</p>
+          <p className="state-msg">{error ? errorMessage(error) : "That arena does not exist."}</p>
+        </div>
       </RoomShell>
     );
   }
@@ -113,17 +130,18 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
 
       {arena.state.tag === "Settled" && (
         <div className="state">
-          <p className="state-title">Arena settled</p>
+          <span className="state-art" aria-hidden />
+          <p className="state-title">Table settled</p>
           <p className="state-msg">
-            The pool was split into each winner's earnings balance. Withdraw from the earnings card above.
+            The pot went to each winner's earnings balance. Winners withdraw from the earnings card above.
           </p>
         </div>
       )}
 
       {arena.state.tag === "Cancelled" && (
         <div className="state">
-          <p className="state-title">Arena cancelled</p>
-          <p className="state-msg">Every joined player's stake was refunded to their earnings balance.</p>
+          <p className="state-title">Table cancelled</p>
+          <p className="state-msg">Every seated player's stake went back to their earnings balance.</p>
         </div>
       )}
     </RoomShell>
@@ -148,7 +166,7 @@ function RoomShell({
           <ArrowLeftIcon size={16} />
         </button>
         <div className="room-title">
-          <h2>Arena #{arenaId}</h2>
+          <h2>Table {arenaId}</h2>
           {state && <span className={`badge badge--${state.toLowerCase()}`}>{STATE_LABEL[state]}</span>}
         </div>
       </div>
@@ -172,7 +190,7 @@ function CreatedRoom({
     return (
       <div className="state">
         <p className="state-title">Connect your wallet</p>
-        <p className="state-msg">You need a connected wallet to join this arena.</p>
+        <p className="state-msg">You need a connected wallet to take a seat at this table.</p>
       </div>
     );
   }
@@ -181,10 +199,11 @@ function CreatedRoom({
     const remaining = arena.max_players - arena.players.length;
     return (
       <div className="state">
-        <p className="state-title">Board sealed</p>
+        <span className="state-art" aria-hidden />
+        <p className="state-title">Your board is sealed</p>
         <p className="state-msg">
-          Waiting for {remaining} more player{remaining === 1 ? "" : "s"} to seal a board before calling
-          starts.
+          Waiting on {remaining} more player{remaining === 1 ? "" : "s"} to seal a board. Calling starts
+          when the table is full.
         </p>
       </div>
     );
@@ -238,9 +257,9 @@ function PlayRoom({
   function claimBingo() {
     if (!address || claimBusy) return;
     const confirmed = window.confirm(
-      "Claim bingo now. If your board does not actually have five completed lines yet, the claim still " +
-        "ends the call phase and opens reveal; settlement replays every revealed board against the real " +
-        "call order and decides winners there, so a false claim freezes the round without winning it."
+      "Claim bingo now? Claiming ends the calling phase for everyone and opens the reveal. " +
+        "Settlement replays every revealed board against the recorded calls and decides the winners " +
+        "there, so a claim without five real lines only freezes the round, it cannot win it."
     );
     if (!confirmed) return;
     void claimTx.run(async (report) => {
@@ -256,23 +275,32 @@ function PlayRoom({
     });
   }
 
+  // Committed means the table is full and the opening call is live for
+  // whoever holds the turn, so the label must not read as a dead wait.
   const turnLabel =
     arena.state.tag === "Committed"
-      ? "waiting for the first call"
+      ? myTurn
+        ? "your call opens the game"
+        : `waiting on ${truncateAddress(arena.players[arena.turn_index])} to open`
       : myTurn
-        ? "your turn to call"
+        ? "your call"
         : `waiting on ${truncateAddress(arena.players[arena.turn_index])}`;
 
   return (
     <div className="room-grid">
       <section className="panel">
-        <p className="panel-label">call board · {turnLabel}</p>
+        <p className="panel-label">call board</p>
+
+        <p className={`turn-strip ${myTurn ? "turn-strip--you" : ""}`} role="status">
+          <span className="turn-dot" aria-hidden />
+          {turnLabel}
+        </p>
 
         {!isPlayer && (
           <p className="call-note">
             {address
-              ? "This wallet has not joined this arena, so calling is read only."
-              : "Connect the wallet that joined this arena to call numbers."}
+              ? "This wallet holds no seat here, so the board is read only."
+              : "Connect the wallet seated at this table to call numbers."}
           </p>
         )}
 
@@ -287,6 +315,7 @@ function PlayRoom({
                 className={`cell board-cell ${order !== undefined ? "cell--called" : ""}`}
                 onClick={() => callNumber(n)}
                 disabled={disabled}
+                aria-label={order !== undefined ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
               >
                 <span className="cell-num">{n}</span>
                 {order !== undefined && <span className="cell-order">{order}</span>}
@@ -298,7 +327,7 @@ function PlayRoom({
         {arena.state.tag === "Playing" && isPlayer && (
           <div className="claim-row">
             <button type="button" className="btn btn--win btn--block" onClick={claimBingo} disabled={claimBusy}>
-              <TrophyIcon size={14} /> {claimBusy ? "claiming..." : "claim bingo"}
+              <TrophyIcon size={14} /> {claimBusy ? "claiming" : "claim bingo"}
             </button>
             <TxStatus state={claimTx.state} onRetry={claimTx.reset} />
           </div>
@@ -341,14 +370,15 @@ function PlayersPanel({
 
   return (
     <aside className="panel">
-      <p className="panel-label">arena #{arena.id}</p>
+      <p className="panel-label">the table</p>
       <p className="call-note">
-        {stroopsToXlm(arena.stake)} XLM stake each · {arena.players.length}/{arena.max_players} seats
+        {stroopsToXlm(arena.stake)} XLM a seat · {arena.players.length}/{arena.max_players} seated ·{" "}
+        {stroopsToXlm(arena.stake * BigInt(arena.players.length))} XLM in the pot
       </p>
 
       <div className="players">
         <div className="players-head">
-          <UsersIcon size={14} /> players
+          <UsersIcon size={14} /> players, in calling order
         </div>
         <ul className="players-list">
           {arena.players.map((p, i) => {

@@ -100,7 +100,7 @@ export default function SendXlmCard({ address, onSuccess }: SendXlmCardProps) {
           className="btn btn--primary btn--block"
           disabled={busy || !destValid || !amountValid}
         >
-          {busy ? "sending..." : "send payment"}
+          {busy ? "sending" : "send payment"}
         </button>
 
         <TxStatus state={state} onRetry={reset} />

@@ -24,12 +24,12 @@ function pad2(n: number): string {
 }
 
 function formatCountdown(msLeft: number): string {
-  if (msLeft <= 0) return "reveal window closed";
+  if (msLeft <= 0) return "00:00:00";
   const totalSeconds = Math.floor(msLeft / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)} left to reveal`;
+  return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
 }
 
 /**
@@ -100,25 +100,28 @@ export default function RevealPanel({ arena, address, myReveal, revealed, allRev
   return (
     <section className="panel">
       <p className="panel-label">reveal phase</p>
-      <p className="countdown mono">{formatCountdown(msLeft)}</p>
+      <p className="countdown" role="timer">
+        {formatCountdown(msLeft)}
+        <small>{deadlinePassed ? "reveal window closed" : "left to reveal"}</small>
+      </p>
 
       {isPlayer &&
         (revealed ? (
-          <p className="reveal-ok">
-            <CheckIcon size={13} /> your board is revealed on chain.
+          <p className="reveal-done">
+            <CheckIcon size={13} /> Your board is revealed on chain.
           </p>
         ) : myReveal ? (
           <>
             <button type="button" className="btn btn--primary btn--block" onClick={onReveal} disabled={revealBusy}>
-              {revealBusy ? "revealing..." : "reveal your board"}
+              {revealBusy ? "revealing" : "reveal your board"}
             </button>
             <TxStatus state={revealTx.state} onRetry={revealTx.reset} />
           </>
         ) : (
-          <p className="board-setup-warn">
-            <AlertIcon size={13} /> no saved board was found on this device for this arena. Without the
-            board and salt used to seal your commitment, it cannot be revealed and your stake is forfeited
-            when this round settles.
+          <p className="alert">
+            <AlertIcon size={15} /> No sealed board is saved on this device for this table. Without the
+            board and salt behind your commitment it cannot be revealed, and your stake is forfeit at
+            settlement.
           </p>
         ))}
 
@@ -129,11 +132,11 @@ export default function RevealPanel({ arena, address, myReveal, revealed, allRev
           onClick={onSettle}
           disabled={!address || !settleEnabled || settleBusy}
         >
-          <TrophyIcon size={14} /> {settleBusy ? "settling..." : "settle arena"}
+          <TrophyIcon size={14} /> {settleBusy ? "settling" : "settle the table"}
         </button>
         {!settleEnabled && (
           <p className="board-setup-warn">
-            settle unlocks once every player has revealed, or the countdown above runs out.
+            Settle unlocks once every player has revealed, or when the clock runs out.
           </p>
         )}
         <TxStatus state={settleTx.state} onRetry={settleTx.reset} />

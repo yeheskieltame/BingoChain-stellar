@@ -3,7 +3,7 @@ import { AlertIcon, CheckIcon, LinkIcon, Spinner, WalletIcon } from "./Icons";
 
 const PHASE_LABELS: Record<"building" | "signing" | "submitting", string> = {
   building: "Building the transaction",
-  signing: "Waiting for your signature in Freighter",
+  signing: "Waiting on your signature in Freighter",
   submitting: "Submitting to the network",
 };
 
@@ -13,8 +13,8 @@ const PHASE_LABELS: Record<"building" | "signing" | "submitting", string> = {
 const ERROR_STYLE: Record<string, { cls: string; label: string; icon: "wallet" | "alert" }> = {
   "wallet-declined": { cls: "tx-status--declined", label: "Signature declined", icon: "wallet" },
   "wrong-network": { cls: "tx-status--declined", label: "Wrong network", icon: "wallet" },
-  contract: { cls: "tx-status--contract", label: "Rejected by the contract", icon: "alert" },
-  network: { cls: "tx-status--network", label: "Network failure", icon: "alert" },
+  contract: { cls: "tx-status--contract", label: "Table rules", icon: "alert" },
+  network: { cls: "tx-status--network", label: "Network trouble", icon: "alert" },
 };
 
 function shortHash(hash: string): string {
@@ -35,7 +35,7 @@ export default function TxStatus({ state, onRetry }: TxStatusProps) {
       <div className="tx-status tx-status--success" role="status">
         <CheckIcon size={15} />
         <div>
-          <p className="tx-status-msg">Payment confirmed on testnet.</p>
+          <p className="tx-status-msg">Confirmed on testnet.</p>
           <a
             className="tx-status-link"
             href={`https://stellar.expert/explorer/testnet/tx/${state.hash}`}

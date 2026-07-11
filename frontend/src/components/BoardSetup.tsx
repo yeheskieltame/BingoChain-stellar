@@ -91,6 +91,11 @@ export default function BoardSetup({ arenaId, address, onCommitted }: BoardSetup
   return (
     <section className="panel board-setup">
       <p className="panel-label">seal your board</p>
+      <p className="call-note">
+        {locked
+          ? "This board is already sealed for this table."
+          : "Arrange your numbers, then commit. Tap two cells to swap them."}
+      </p>
 
       <div className="card-grid">
         {board.map((n, i) => (
@@ -112,19 +117,19 @@ export default function BoardSetup({ arenaId, address, onCommitted }: BoardSetup
           <DiceIcon size={14} /> shuffle
         </button>
         <button type="button" className="btn btn--primary" onClick={onCommit} disabled={busy}>
-          {busy ? "sealing..." : locked ? "retry commit" : "commit board and stake"}
+          {busy ? "sealing" : locked ? "retry the commit" : "commit board, stake XLM"}
         </button>
       </div>
 
       {locked ? (
         <p className="board-setup-warn">
-          A sealed board is already saved for this arena, so it is reused as is. A fresh
-          salt would make an earlier on-chain commit impossible to reveal.
+          A sealed board is already saved here for this table, so it is reused as is. A fresh
+          salt would orphan the earlier on-chain commit.
         </p>
       ) : (
         <p className="board-setup-warn">
-          The board and salt are saved on this device only. Clearing site data before the
-          reveal phase forfeits your stake.
+          Your board and its salt live in this browser only. Clear site data before the reveal
+          and the stake is forfeit.
         </p>
       )}
 

@@ -44,7 +44,7 @@ export default function App() {
   return (
     <div className="shell">
       <Header wallet={wallet} balanceState={balanceState} />
-      <main className="placeholder-main">
+      <main className="main-col">
         <EarningsCard address={wallet.address} />
         {route.name === "lobby" && (
           <Lobby
@@ -96,7 +96,7 @@ function WalletView({ address, onBack, onSuccess }: WalletViewProps) {
           <ArrowLeftIcon size={16} />
         </button>
         <div className="room-title">
-          <h2>Wallet</h2>
+          <h2>Send XLM</h2>
         </div>
       </div>
       <SendXlmCard address={address} onSuccess={onSuccess} />

@@ -1,6 +1,6 @@
 import type { Arena } from "bingo-client";
 import CreateArenaForm from "./CreateArenaForm";
-import { RefreshIcon, UsersIcon } from "./Icons";
+import { RefreshIcon } from "./Icons";
 import { stroopsToXlm, truncateAddress } from "../lib/format";
 
 interface LobbyProps {
@@ -36,22 +36,48 @@ function ArenaCard({
   return (
     <button type="button" className="table-card" onClick={() => onOpen(arena.id)}>
       <div className="table-card-top">
-        <span className="table-id">#{arena.id}</span>
+        <span className="table-id">TABLE {arena.id}</span>
         <span className={`badge badge--${arena.state.tag.toLowerCase()}`}>
           {STATE_LABEL[arena.state.tag]}
         </span>
       </div>
-      <div className="table-stats">
-        <span className="tstat">
-          <UsersIcon size={13} /> {arena.players.length}/{arena.max_players}
+      <div className="table-stake">
+        {stroopsToXlm(arena.stake)}
+        <small>XLM a seat</small>
+      </div>
+      <div className="seats-row">
+        <span className="seats-pips" aria-hidden>
+          {Array.from({ length: arena.max_players }, (_, i) => (
+            <span key={i} className={`pip ${i < arena.players.length ? "pip--filled" : ""}`} />
+          ))}
         </span>
-        <span className="tstat">{stroopsToXlm(arena.stake)} XLM stake</span>
+        {arena.players.length}/{arena.max_players} seated
       </div>
       <div className="table-host">
-        by {truncateAddress(arena.creator)}
-        {joined && <span className="player-you">you joined</span>}
+        opened by <span className="mono">{truncateAddress(arena.creator)}</span>
+        {joined && <span className="player-you">your seat</span>}
       </div>
     </button>
+  );
+}
+
+/** Placeholder cards with the exact footprint of ArenaCard, so the grid
+ * settles once and never jumps when real arenas replace them. */
+function SkeletonCards({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="table-card table-card--skeleton" aria-hidden>
+          <div className="table-card-top">
+            <span className="skel skel--id" />
+            <span className="skel skel--badge" />
+          </div>
+          <span className="skel skel--stake" />
+          <span className="skel skel--seats" />
+          <span className="skel skel--host" />
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -75,7 +101,7 @@ export default function Lobby({
 
       <div>
         <div className="tables-head">
-          <h2 className="section-title">Open arenas</h2>
+          <h2 className="section-title">Open tables</h2>
           <span className="section-count">{open.length}</span>
           <button
             type="button"
@@ -92,22 +118,27 @@ export default function Lobby({
 
         {!loading && open.length === 0 && !error && (
           <div className="state">
-            <p className="state-title">No open arenas</p>
-            <p className="state-msg">Create one above and wait for players to seal their boards.</p>
+            <span className="state-art" aria-hidden />
+            <p className="state-title">The room is quiet</p>
+            <p className="state-msg">No open tables right now. Open one above; play starts once every seat has sealed a board.</p>
           </div>
         )}
 
         <div className="table-grid">
-          {open.map((arena) => (
-            <ArenaCard key={arena.id} arena={arena} address={address} onOpen={onOpenArena} />
-          ))}
+          {loading && arenas.length === 0 && !error ? (
+            <SkeletonCards count={3} />
+          ) : (
+            open.map((arena) => (
+              <ArenaCard key={arena.id} arena={arena} address={address} onOpen={onOpenArena} />
+            ))
+          )}
         </div>
       </div>
 
       {mine.length > 0 && (
         <div>
           <div className="tables-head">
-            <h2 className="section-title">Your arenas</h2>
+            <h2 className="section-title">Your tables</h2>
             <span className="section-count">{mine.length}</span>
           </div>
           <div className="table-grid">

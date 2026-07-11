@@ -54,15 +54,15 @@ export default function CreateArenaForm({ address, onCreated }: CreateArenaFormP
   if (!address) {
     return (
       <section className="panel create-card">
-        <p className="panel-label">open an arena</p>
-        <p className="send-hint">Connect your wallet to create a staked arena.</p>
+        <p className="panel-label">open a table</p>
+        <p className="send-hint">Connect your wallet to open a staked table.</p>
       </section>
     );
   }
 
   return (
     <section className="panel create-card">
-      <p className="panel-label">open an arena</p>
+      <p className="panel-label">open a table</p>
       <form className="send-form" onSubmit={onSubmit}>
         <div className="field">
           <label className="field-label" htmlFor="create-stake">
@@ -101,10 +101,10 @@ export default function CreateArenaForm({ address, onCreated }: CreateArenaFormP
 
         <button type="submit" className="btn btn--primary btn--block" disabled={busy || !stakeValid}>
           {busy ? (
-            "creating..."
+            "opening"
           ) : (
             <>
-              <PlusIcon size={14} /> create arena
+              <PlusIcon size={14} /> open the table
             </>
           )}
         </button>

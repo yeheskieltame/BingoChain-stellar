@@ -26,7 +26,7 @@ export default function Header({ wallet, balanceState }: HeaderProps) {
         </span>
         <div className="brand-text">
           <h1 className="brand-name">BingoChain</h1>
-          <p className="brand-sub">stellar testnet</p>
+          <p className="brand-sub">staked bingo · stellar testnet</p>
         </div>
       </div>
 
@@ -39,7 +39,7 @@ export default function Header({ wallet, balanceState }: HeaderProps) {
         )}
 
         <a className="chip chip--link" href="#/wallet">
-          send xlm
+          Send XLM
         </a>
 
         {address ? (
@@ -53,9 +53,9 @@ export default function Header({ wallet, balanceState }: HeaderProps) {
               {loading && balance === null ? (
                 <Spinner size={13} />
               ) : balanceError ? (
-                "couldn't load balance, retry"
+                "balance unavailable, retry"
               ) : balance === null ? (
-                "unfunded account, use friendbot"
+                "unfunded, top up via friendbot"
               ) : (
                 `${balance} XLM`
               )}
@@ -66,12 +66,12 @@ export default function Header({ wallet, balanceState }: HeaderProps) {
               <span className="mono">{truncateAddress(address)}</span>
             </span>
             <button className="chip chip--ghost" onClick={disconnect}>
-              disconnect
+              Disconnect
             </button>
           </>
         ) : (
           <button className="chip chip--cta" onClick={connect} disabled={connecting}>
-            {connecting ? <Spinner size={13} /> : <WalletIcon size={14} />} connect wallet
+            {connecting ? <Spinner size={13} /> : <WalletIcon size={14} />} Connect wallet
           </button>
         )}
       </div>
