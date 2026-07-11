@@ -473,6 +473,13 @@ button { font-family: inherit; }
 .claim-row { margin-top: 16px; }
 .your-board { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
 
+.countdown { font-size: 13px; color: var(--gold); margin: 0 0 16px; }
+.settle-row { margin-top: 16px; }
+
+.earnings-card { max-width: 460px; }
+.earnings-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.earnings-amount { margin: 4px 0 0; font-family: var(--font-display); font-weight: 800; font-size: 22px; }
+
 /* ================================  STATES  ============================= */
 
 .state {

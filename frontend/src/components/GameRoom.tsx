@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Arena } from "bingo-client";
 import BoardSetup from "./BoardSetup";
+import RevealPanel from "./RevealPanel";
 import TxStatus from "./TxStatus";
 import { STATE_LABEL } from "./Lobby";
 import { ArrowLeftIcon, CheckIcon, TrophyIcon, UsersIcon } from "./Icons";
@@ -77,6 +78,7 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
   }
 
   const isPlayer = !!address && arena.players.includes(address);
+  const allRevealed = arena.players.length > 0 && arena.players.every((p) => revealStatus[p]);
 
   return (
     <RoomShell arenaId={arenaId} onBack={onBack} state={arena.state.tag}>
@@ -97,13 +99,14 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
 
       {arena.state.tag === "Revealing" && (
         <div className="room-grid">
-          <div className="state">
-            <p className="state-title">Reveal phase</p>
-            <p className="state-msg">
-              Calling has stopped and every player now has a window to reveal their board. Reveal and
-              settle actions land in the next commit.
-            </p>
-          </div>
+          <RevealPanel
+            arena={arena}
+            address={address}
+            myReveal={myReveal}
+            revealed={!!address && !!revealStatus[address]}
+            allRevealed={allRevealed}
+            onChanged={handleChanged}
+          />
           <PlayersPanel arena={arena} address={address} revealStatus={revealStatus} />
         </div>
       )}

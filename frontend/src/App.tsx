@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeftIcon } from "./components/Icons";
+import EarningsCard from "./components/EarningsCard";
 import GameRoom from "./components/GameRoom";
 import Header from "./components/Header";
 import Lobby from "./components/Lobby";
@@ -44,6 +45,7 @@ export default function App() {
     <div className="shell">
       <Header wallet={wallet} balanceState={balanceState} />
       <main className="placeholder-main">
+        <EarningsCard address={wallet.address} />
         {route.name === "lobby" && (
           <Lobby
             address={wallet.address}
