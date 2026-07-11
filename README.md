@@ -129,6 +129,17 @@ pnpm dev
 # open http://localhost:5173
 ```
 
+## Practice mode (no wallet)
+
+`#/practice` is the zero-risk front door: a full round against a bot with no
+wallet, no stake, and no transactions, running entirely in the browser. The
+engine (`frontend/src/lib/practice.ts`) mirrors the contract's rules exactly,
+same 12 line masks, same replay-based settlement, same false-claim and
+most-lines outcomes, and a dismissible coach hint on each phase explains what
+the real game does on chain at that moment: the hash commitment and stake
+escrow, calls as public transactions, the claim freeze and reveal window, and
+the settlement replay. Start there before staking anything.
+
 ## Workshop level checklist
 
 ### Level 1: wallet basics
@@ -159,7 +170,7 @@ pnpm dev
 | CI on every push and pull request: format, lint, test, build for contract and frontend | `.github/workflows/ci.yml` |
 | A repeatable, idempotent deploy workflow | `scripts/deploy.sh` |
 | Mobile-first responsive design, loading and error states, no layout jumps | `frontend/src/styles.css`, component markup across `frontend/src/components` |
-| Contract tests and frontend unit tests | `contracts/bingo/src/test.rs` (36 tests), `frontend/src/lib/commit.test.ts`, `frontend/src/lib/errors.test.ts` |
+| Contract tests and frontend unit tests | `contracts/bingo/src/test.rs` (36 tests), `frontend/src/lib/commit.test.ts`, `frontend/src/lib/errors.test.ts`, `frontend/src/lib/practice.test.ts` |
 | Documentation and a working demo script | this file |
 
 ## Live deployment (testnet)
@@ -179,7 +190,9 @@ this exact deployment on arena id 1, and a rejected early `cancel_arena`
 ## Demo script (two players)
 
 Two funded testnet accounts, each with Freighter (two browser profiles, or
-one browser with two Freighter accounts you switch between).
+one browser with two Freighter accounts you switch between). New to the
+game entirely: play a free practice round at `#/practice` first, no wallet
+needed, and let the coach hints walk you through the phases.
 
 1. Both players open the app and connect Freighter from the header. If
    Freighter is on the wrong network, the header shows a wrong-network state
