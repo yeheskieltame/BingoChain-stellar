@@ -108,7 +108,7 @@ export default function Lobby({
             className="btn btn--icon"
             onClick={onRefresh}
             disabled={loading}
-            aria-label="Refresh arenas"
+            aria-label="Refresh tables"
           >
             <RefreshIcon size={14} className={loading ? "spin" : ""} />
           </button>

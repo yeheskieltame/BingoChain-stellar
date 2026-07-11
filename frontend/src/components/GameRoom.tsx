@@ -88,7 +88,7 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
       <RoomShell arenaId={arenaId} onBack={onBack}>
         <div className="state">
           <p className="state-title">No table here</p>
-          <p className="state-msg">{error ? errorMessage(error) : "That arena does not exist."}</p>
+          <p className="state-msg">{error ? errorMessage(error) : "That table does not exist."}</p>
         </div>
       </RoomShell>
     );
