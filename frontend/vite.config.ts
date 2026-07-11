@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -17,5 +18,10 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+  },
+  // Pure logic tests only (lib/commit.ts, lib/errors.ts): no DOM needed, so
+  // the node environment is enough and this stays dependency-free.
+  test: {
+    environment: "node",
   },
 });
