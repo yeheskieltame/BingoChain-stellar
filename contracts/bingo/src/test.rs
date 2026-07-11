@@ -48,7 +48,7 @@ fn commitment(env: &Env, seed: u8) -> BytesN<32> {
     BytesN::from_array(env, &[seed; 32])
 }
 
-// A permutation of 1..=25 in cell order.
+// A permutation of 1..=25 in cell order (identity board: number n at cell n-1).
 fn valid_board_bytes() -> [u8; 25] {
     let mut b = [0u8; 25];
     let mut i = 0usize;
@@ -57,6 +57,54 @@ fn valid_board_bytes() -> [u8; 25] {
         i += 1;
     }
     b
+}
+
+// Numbers 22..=25 sit on cells 0, 6, 12, 18, so calling 1..=21 completes only
+// row 4 and column 4 (two lines) and never reaches a bingo.
+fn board_two_lines() -> [u8; 25] {
+    [
+        22, 1, 2, 3, 4, 5, 23, 6, 7, 8, 9, 10, 24, 11, 12, 13, 14, 15, 25, 16, 17, 18, 19, 20, 21,
+    ]
+}
+
+// Numbers 1..=5 sit on cells 0, 1, 2, 3, 5, so calling 1..=5 completes no line.
+fn board_zero_lines() -> [u8; 25] {
+    [
+        1, 2, 3, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+    ]
+}
+
+fn salt_of(env: &Env, seed: u8) -> BytesN<32> {
+    BytesN::from_array(env, &[seed; 32])
+}
+
+// The board commitment the contract verifies: sha256 over the 25 board bytes
+// followed by the 32 salt bytes.
+fn commit_for(env: &Env, board: &[u8; 25], salt: &BytesN<32>) -> BytesN<32> {
+    let mut preimage = Bytes::from_array(env, board);
+    preimage.append(&Bytes::from_array(env, &salt.to_array()));
+    env.crypto().sha256(&preimage).to_bytes()
+}
+
+// Fill a two seat arena and open its reveal phase (one call flips it to Playing,
+// then player one claims). Returns the arena id and both players in seat order.
+fn revealing_game(
+    s: &Setup,
+    board1: &[u8; 25],
+    salt1: &BytesN<32>,
+    board2: &[u8; 25],
+    salt2: &BytesN<32>,
+) -> (u32, Address, Address) {
+    let p1 = funded_player(s, STAKE);
+    let p2 = funded_player(s, STAKE);
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, board1, salt1));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, board2, salt2));
+    s.client.call_number(&id, &p1, &1);
+    s.client.claim_bingo(&id, &p1);
+    (id, p1, p2)
 }
 
 #[test]
@@ -286,4 +334,343 @@ fn board_validity_accepts_permutation_rejects_bad() {
     // Wrong length is rejected.
     assert!(!is_valid_board(&Bytes::from_array(&env, &[1u8; 24])));
     assert!(!is_valid_board(&Bytes::from_array(&env, &[0u8; 0])));
+}
+
+#[test]
+fn full_happy_path_single_winner() {
+    let s = setup();
+    let token_client = token::Client::new(&s.env, &s.token);
+
+    let board1 = valid_board_bytes(); // identity board reaches five lines at call 21
+    let board2 = board_two_lines(); // never reaches a bingo
+    let salt1 = salt_of(&s.env, 7);
+    let salt2 = salt_of(&s.env, 9);
+
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board1, &salt1));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board2, &salt2));
+
+    // The contract escrows both stakes.
+    assert_eq!(token_client.balance(&s.contract_id), STAKE * 2);
+
+    // Player two cannot open play out of turn.
+    assert_eq!(
+        s.client.try_call_number(&id, &p2, &1),
+        Err(Ok(Error::NotYourTurn))
+    );
+
+    // Alternate calls 1..=21 starting with player one (seat 0).
+    let mut n = 1u32;
+    while n <= 21 {
+        let caller = if (n - 1).is_multiple_of(2) { &p1 } else { &p2 };
+        s.client.call_number(&id, caller, &n);
+        n += 1;
+    }
+    let arena = s.client.get_arena(&id);
+    assert_eq!(arena.state, ArenaState::Playing);
+    assert_eq!(arena.call_count, 21);
+
+    // Player one's board has hit five lines; they claim to open the reveal.
+    s.client.claim_bingo(&id, &p1);
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Revealing);
+
+    // Both reveal before the deadline.
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board1), &salt1);
+    s.client
+        .reveal_board(&id, &p2, &Bytes::from_array(&s.env, &board2), &salt2);
+    assert_eq!(
+        s.client.revealed_board_of(&id, &p1),
+        Some(Bytes::from_array(&s.env, &board1))
+    );
+
+    // Settle is allowed before the deadline because everyone revealed.
+    s.client.settle(&id);
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Settled);
+
+    // total 20_000_000, fee 1% = 200_000, pool 19_800_000, single winner.
+    let admin = s.client.config().admin;
+    assert_eq!(s.client.earnings_of(&p1), 19_800_000);
+    assert_eq!(s.client.earnings_of(&p2), 0);
+    assert_eq!(s.client.earnings_of(&admin), 200_000);
+
+    // Withdraw pays out, zeroes the balance, and moves the tokens.
+    let paid = s.client.withdraw(&p1);
+    assert_eq!(paid, 19_800_000);
+    assert_eq!(token_client.balance(&p1), 19_800_000);
+    assert_eq!(token_client.balance(&s.contract_id), 200_000);
+
+    s.client.withdraw(&admin);
+    assert_eq!(token_client.balance(&admin), 200_000);
+    assert_eq!(token_client.balance(&s.contract_id), 0);
+
+    // A second withdraw has nothing to pay.
+    assert_eq!(
+        s.client.try_withdraw(&p1),
+        Err(Ok(Error::NothingToWithdraw))
+    );
+}
+
+#[test]
+fn earliest_index_tie_splits_pool_remainder_to_admin() {
+    let s = setup();
+    // An odd pool leaves a one unit remainder that joins the fee.
+    let stake: i128 = 10_000_050;
+
+    let board = valid_board_bytes(); // both boards are identical and tie at call 21
+    let salt1 = salt_of(&s.env, 3);
+    let salt2 = salt_of(&s.env, 4);
+
+    let p1 = funded_player(&s, stake);
+    let p2 = funded_player(&s, stake);
+    let id = s.client.create_arena(&p1, &stake, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt1));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt2));
+
+    let mut n = 1u32;
+    while n <= 21 {
+        let caller = if (n - 1).is_multiple_of(2) { &p1 } else { &p2 };
+        s.client.call_number(&id, caller, &n);
+        n += 1;
+    }
+    s.client.claim_bingo(&id, &p1);
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board), &salt1);
+    s.client
+        .reveal_board(&id, &p2, &Bytes::from_array(&s.env, &board), &salt2);
+    s.client.settle(&id);
+
+    // total 20_000_100, fee 200_001, pool 19_800_099, split two ways leaves 1.
+    let admin = s.client.config().admin;
+    assert_eq!(s.client.earnings_of(&p1), 9_900_049);
+    assert_eq!(s.client.earnings_of(&p2), 9_900_049);
+    assert_eq!(s.client.earnings_of(&admin), 200_002);
+}
+
+#[test]
+fn no_bingo_winner_is_most_completed_lines() {
+    let s = setup();
+    let board1 = valid_board_bytes(); // completes row 0 after calls 1..=5
+    let board2 = board_zero_lines(); // completes no line
+    let salt1 = salt_of(&s.env, 1);
+    let salt2 = salt_of(&s.env, 2);
+
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board1, &salt1));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board2, &salt2));
+
+    // Only five calls, so nobody reaches five lines.
+    let mut n = 1u32;
+    while n <= 5 {
+        let caller = if (n - 1).is_multiple_of(2) { &p1 } else { &p2 };
+        s.client.call_number(&id, caller, &n);
+        n += 1;
+    }
+    s.client.claim_bingo(&id, &p1);
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board1), &salt1);
+    s.client
+        .reveal_board(&id, &p2, &Bytes::from_array(&s.env, &board2), &salt2);
+    s.client.settle(&id);
+
+    // Player one completed one line (row 0), player two none, so one winner.
+    let admin = s.client.config().admin;
+    assert_eq!(s.client.earnings_of(&p1), 19_800_000);
+    assert_eq!(s.client.earnings_of(&p2), 0);
+    assert_eq!(s.client.earnings_of(&admin), 200_000);
+}
+
+#[test]
+fn nobody_reveals_sends_pot_to_admin() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let (id, p1, p2) = revealing_game(&s, &board, &salt_of(&s.env, 5), &board, &salt_of(&s.env, 6));
+
+    // Let the reveal window lapse with no reveals.
+    let deadline = s.client.get_arena(&id).reveal_deadline;
+    s.env.ledger().set_timestamp(deadline + 1);
+
+    s.client.settle(&id);
+
+    let admin = s.client.config().admin;
+    assert_eq!(s.client.earnings_of(&admin), STAKE * 2);
+    assert_eq!(s.client.earnings_of(&p1), 0);
+    assert_eq!(s.client.earnings_of(&p2), 0);
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Settled);
+}
+
+#[test]
+fn reveal_wrong_salt_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let salt1 = salt_of(&s.env, 11);
+    let (id, p1, _p2) = revealing_game(&s, &board, &salt1, &board, &salt_of(&s.env, 12));
+
+    // A different salt breaks the commitment check.
+    let wrong = salt_of(&s.env, 99);
+    assert_eq!(
+        s.client
+            .try_reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board), &wrong),
+        Err(Ok(Error::CommitMismatch))
+    );
+}
+
+#[test]
+fn reveal_twice_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let salt1 = salt_of(&s.env, 21);
+    let (id, p1, _p2) = revealing_game(&s, &board, &salt1, &board, &salt_of(&s.env, 22));
+
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board), &salt1);
+    assert_eq!(
+        s.client
+            .try_reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board), &salt1),
+        Err(Ok(Error::AlreadyRevealed))
+    );
+}
+
+#[test]
+fn reveal_after_deadline_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let salt1 = salt_of(&s.env, 31);
+    let (id, p1, _p2) = revealing_game(&s, &board, &salt1, &board, &salt_of(&s.env, 32));
+
+    let deadline = s.client.get_arena(&id).reveal_deadline;
+    s.env.ledger().set_timestamp(deadline + 1);
+    assert_eq!(
+        s.client
+            .try_reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board), &salt1),
+        Err(Ok(Error::RevealWindowClosed))
+    );
+}
+
+#[test]
+fn reveal_invalid_board_rejected() {
+    let s = setup();
+    // A board that hashes to its commitment but is not a permutation of 1..=25.
+    let bad = [1u8; 25];
+    let salt1 = salt_of(&s.env, 51);
+    let (id, p1, _p2) =
+        revealing_game(&s, &bad, &salt1, &valid_board_bytes(), &salt_of(&s.env, 52));
+
+    assert_eq!(
+        s.client
+            .try_reveal_board(&id, &p1, &Bytes::from_array(&s.env, &bad), &salt1),
+        Err(Ok(Error::InvalidBoard))
+    );
+}
+
+#[test]
+fn settle_window_open_not_all_revealed_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let salt1 = salt_of(&s.env, 41);
+    let (id, p1, _p2) = revealing_game(&s, &board, &salt1, &board, &salt_of(&s.env, 42));
+
+    // Only player one reveals while the window is still open.
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board), &salt1);
+    assert_eq!(s.client.try_settle(&id), Err(Ok(Error::RevealWindowOpen)));
+}
+
+#[test]
+fn call_number_out_of_range_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt_of(&s.env, 1)));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt_of(&s.env, 2)));
+
+    // Player one holds the turn; 0 and 26 are out of range.
+    assert_eq!(
+        s.client.try_call_number(&id, &p1, &0),
+        Err(Ok(Error::NumberOutOfRange))
+    );
+    assert_eq!(
+        s.client.try_call_number(&id, &p1, &26),
+        Err(Ok(Error::NumberOutOfRange))
+    );
+}
+
+#[test]
+fn call_number_repeat_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt_of(&s.env, 1)));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt_of(&s.env, 2)));
+
+    s.client.call_number(&id, &p1, &5);
+    // Player two holds the turn now; 5 has already been called.
+    assert_eq!(
+        s.client.try_call_number(&id, &p2, &5),
+        Err(Ok(Error::NumberAlreadyCalled))
+    );
+}
+
+#[test]
+fn call_number_by_stranger_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let stranger = Address::generate(&s.env);
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt_of(&s.env, 1)));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt_of(&s.env, 2)));
+
+    assert_eq!(
+        s.client.try_call_number(&id, &stranger, &1),
+        Err(Ok(Error::NotAPlayer))
+    );
+}
+
+#[test]
+fn call_number_wrong_state_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+
+    // Not started: a Created arena that is not yet full cannot take calls.
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt_of(&s.env, 1)));
+    assert_eq!(
+        s.client.try_call_number(&id, &p1, &1),
+        Err(Ok(Error::WrongState))
+    );
+
+    // Finished: once the reveal phase is open, calls are rejected.
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt_of(&s.env, 2)));
+    s.client.call_number(&id, &p1, &1);
+    s.client.claim_bingo(&id, &p1);
+    assert_eq!(
+        s.client.try_call_number(&id, &p1, &2),
+        Err(Ok(Error::WrongState))
+    );
 }
