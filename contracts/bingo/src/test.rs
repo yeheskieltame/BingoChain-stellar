@@ -74,6 +74,14 @@ fn board_zero_lines() -> [u8; 25] {
     ]
 }
 
+// Numbers 1..=5 sit on cells 0, 5, 10, 15, 20, so calling 1..=5 completes
+// exactly column 0 and nothing else.
+fn board_one_column() -> [u8; 25] {
+    [
+        1, 6, 7, 8, 9, 2, 10, 11, 12, 13, 3, 14, 15, 16, 17, 4, 18, 19, 20, 21, 5, 22, 23, 24, 25,
+    ]
+}
+
 fn salt_of(env: &Env, seed: u8) -> BytesN<32> {
     BytesN::from_array(env, &[seed; 32])
 }
@@ -673,4 +681,121 @@ fn call_number_wrong_state_rejected() {
         s.client.try_call_number(&id, &p1, &2),
         Err(Ok(Error::WrongState))
     );
+}
+
+#[test]
+fn partial_reveal_past_deadline_forfeits_non_revealer() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let salt1 = salt_of(&s.env, 61);
+    let (id, p1, p2) = revealing_game(&s, &board, &salt1, &board, &salt_of(&s.env, 62));
+
+    // Only player one reveals; the window then lapses.
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board), &salt1);
+    let deadline = s.client.get_arena(&id).reveal_deadline;
+    s.env.ledger().set_timestamp(deadline + 1);
+
+    s.client.settle(&id);
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Settled);
+
+    // The non revealer forfeits: their stake stays in the pot, so the sole
+    // revealer takes the full pool of both stakes minus the fee.
+    // total 20_000_000, fee 1% = 200_000, pool 19_800_000, one winner, no remainder.
+    let admin = s.client.config().admin;
+    assert_eq!(s.client.earnings_of(&p1), 19_800_000);
+    assert_eq!(s.client.earnings_of(&p2), 0);
+    assert_eq!(s.client.earnings_of(&admin), 200_000);
+    // Every unit of the two escrowed stakes is accounted for.
+    assert_eq!(
+        s.client.earnings_of(&p1) + s.client.earnings_of(&p2) + s.client.earnings_of(&admin),
+        STAKE * 2
+    );
+}
+
+#[test]
+fn no_bingo_line_tie_splits_pool_remainder_to_admin() {
+    let s = setup();
+    // An odd pool leaves a one unit remainder that joins the fee.
+    let stake: i128 = 10_000_050;
+
+    // After calls 1..=5 both boards complete exactly one line (row 0 for the
+    // identity board, column 0 for the other), so the settle ties on lines.
+    let board1 = valid_board_bytes();
+    let board2 = board_one_column();
+    let salt1 = salt_of(&s.env, 71);
+    let salt2 = salt_of(&s.env, 72);
+
+    let p1 = funded_player(&s, stake);
+    let p2 = funded_player(&s, stake);
+    let id = s.client.create_arena(&p1, &stake, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board1, &salt1));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board2, &salt2));
+
+    let mut n = 1u32;
+    while n <= 5 {
+        let caller = if (n - 1).is_multiple_of(2) { &p1 } else { &p2 };
+        s.client.call_number(&id, caller, &n);
+        n += 1;
+    }
+    s.client.claim_bingo(&id, &p1);
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board1), &salt1);
+    s.client
+        .reveal_board(&id, &p2, &Bytes::from_array(&s.env, &board2), &salt2);
+    s.client.settle(&id);
+
+    // total 20_000_100, fee 200_001, pool 19_800_099, split two ways leaves 1.
+    let admin = s.client.config().admin;
+    assert_eq!(s.client.earnings_of(&p1), 9_900_049);
+    assert_eq!(s.client.earnings_of(&p2), 9_900_049);
+    assert_eq!(s.client.earnings_of(&admin), 200_002);
+    // Every unit of the two escrowed stakes is accounted for.
+    assert_eq!(
+        s.client.earnings_of(&p1) + s.client.earnings_of(&p2) + s.client.earnings_of(&admin),
+        stake * 2
+    );
+}
+
+#[test]
+fn losing_claimant_gains_no_advantage() {
+    let s = setup();
+    // Over calls 1..=23 in order, the two lines board reaches five lines at
+    // call 23 while the identity board reaches them at call 21, so the
+    // claimant holds the later bingo index and must lose the replay.
+    let board1 = board_two_lines();
+    let board2 = valid_board_bytes();
+    let salt1 = salt_of(&s.env, 81);
+    let salt2 = salt_of(&s.env, 82);
+
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board1, &salt1));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board2, &salt2));
+
+    let mut n = 1u32;
+    while n <= 23 {
+        let caller = if (n - 1).is_multiple_of(2) { &p1 } else { &p2 };
+        s.client.call_number(&id, caller, &n);
+        n += 1;
+    }
+    // Player one claims on their own bingo at call 23.
+    s.client.claim_bingo(&id, &p1);
+    s.client
+        .reveal_board(&id, &p1, &Bytes::from_array(&s.env, &board1), &salt1);
+    s.client
+        .reveal_board(&id, &p2, &Bytes::from_array(&s.env, &board2), &salt2);
+    s.client.settle(&id);
+
+    // The claim only froze the sequence; player two's earlier index wins all.
+    // total 20_000_000, fee 200_000, pool 19_800_000, one winner.
+    let admin = s.client.config().admin;
+    assert_eq!(s.client.earnings_of(&p1), 0);
+    assert_eq!(s.client.earnings_of(&p2), 19_800_000);
+    assert_eq!(s.client.earnings_of(&admin), 200_000);
 }
