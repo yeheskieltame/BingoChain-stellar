@@ -41,7 +41,9 @@ export default function SendXlmCard({ address, onSuccess }: SendXlmCardProps) {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!address || !destValid || !amountValid || busy) return;
-    void run(() => sendXlm(address, destination.trim(), amount, (xdr) => signTx(xdr, address)));
+    void run((report) =>
+      sendXlm(address, destination.trim(), amount, (xdr) => signTx(xdr, address), report)
+    );
   }
 
   if (!address) {

@@ -1,6 +1,6 @@
 import { Account, Asset, BASE_FEE, Operation, StrKey, TransactionBuilder } from "@stellar/stellar-sdk";
 import { CONFIG } from "./config";
-import { reportTxPhase, TxSubmitError } from "./tx";
+import { TxSubmitError, type ReportPhase } from "./tx";
 
 interface HorizonBalanceLine {
   asset_type: string;
@@ -46,13 +46,15 @@ const AMOUNT_RE = /^\d+(\.\d{1,7})?$/;
  * Send a classic native-XLM payment on testnet. Builds the transaction from
  * the sender's current sequence number, hands the envelope XDR to the sign
  * callback (Freighter in the app), submits the signed XDR to Horizon, and
- * returns the transaction hash.
+ * returns the transaction hash. The optional report callback (passed in by
+ * useTx.run) receives phase updates for the UI.
  */
 export async function sendXlm(
   from: string,
   to: string,
   amount: string,
-  sign: (xdr: string) => Promise<string>
+  sign: (xdr: string) => Promise<string>,
+  report?: ReportPhase
 ): Promise<string> {
   if (!StrKey.isValidEd25519PublicKey(to)) {
     throw new Error("The destination is not a valid Stellar address.");
@@ -61,7 +63,7 @@ export async function sendXlm(
     throw new Error("The amount must be a positive number with at most 7 decimal places.");
   }
 
-  reportTxPhase("building");
+  report?.("building");
 
   const accountRes = await fetch(`${CONFIG.horizonUrl}/accounts/${from}`);
   if (accountRes.status === 404) {
@@ -80,10 +82,10 @@ export async function sendXlm(
     .setTimeout(60)
     .build();
 
-  reportTxPhase("signing");
+  report?.("signing");
   const signedXdr = await sign(tx.toXDR());
 
-  reportTxPhase("submitting");
+  report?.("submitting");
   const submitRes = await fetch(`${CONFIG.horizonUrl}/transactions`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

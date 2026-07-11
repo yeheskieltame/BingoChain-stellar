@@ -1,6 +1,7 @@
 // Transaction state machine shared by every flow that submits a transaction,
-// classic payments now, Soroban contract calls later. Transport code reports
-// progress through reportTxPhase; useTx listens and renders.
+// classic payments now, Soroban contract calls later. Each useTx run passes
+// its transport a scoped ReportPhase callback, so concurrent consumers
+// (lobby, game room, withdraw card) cannot cross wires.
 
 export type TxState =
   | { phase: "idle" }
@@ -12,25 +13,12 @@ export type TxState =
 
 export type TxPhase = "building" | "signing" | "submitting";
 
-type PhaseListener = (phase: TxPhase) => void;
-
-let phaseListener: PhaseListener | null = null;
-
 /**
- * Called by transports (sendXlm, later Soroban invokes) as a transaction
- * moves from building to signing to submitting. No-op when no run is active.
+ * Per-run progress callback. useTx hands one to the transport function
+ * (sendXlm, later Soroban invokes) so it can advance the UI from building
+ * to signing to submitting. Scoped to a single run; never shared.
  */
-export function reportTxPhase(phase: TxPhase): void {
-  if (phaseListener) phaseListener(phase);
-}
-
-/** Subscribe to phase reports for the duration of one run. Returns an unsubscribe. */
-export function onTxPhase(listener: PhaseListener): () => void {
-  phaseListener = listener;
-  return () => {
-    if (phaseListener === listener) phaseListener = null;
-  };
-}
+export type ReportPhase = (phase: TxPhase) => void;
 
 /**
  * Thrown when Horizon rejects a submitted transaction. Carries the result
