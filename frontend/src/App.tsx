@@ -4,17 +4,23 @@ import EarningsCard from "./components/EarningsCard";
 import GameRoom from "./components/GameRoom";
 import Header from "./components/Header";
 import Lobby from "./components/Lobby";
+import PracticeRoom from "./components/PracticeRoom";
 import SendXlmCard from "./components/SendXlmCard";
 import { useArenas } from "./hooks/useArenas";
 import { useBalance } from "./hooks/useBalance";
 import { useWallet } from "./hooks/useWallet";
 
-type Route = { name: "lobby" } | { name: "arena"; id: number } | { name: "wallet" };
+type Route =
+  | { name: "lobby" }
+  | { name: "arena"; id: number }
+  | { name: "wallet" }
+  | { name: "practice" };
 
 function parseHash(hash: string): Route {
   const match = hash.match(/^#\/arena\/(\d+)$/);
   if (match) return { name: "arena", id: Number(match[1]) };
   if (hash === "#/wallet") return { name: "wallet" };
+  if (hash === "#/practice") return { name: "practice" };
   return { name: "lobby" };
 }
 
@@ -75,6 +81,7 @@ export default function App() {
             onSuccess={balanceState.refresh}
           />
         )}
+        {route.name === "practice" && <PracticeRoom onBack={() => navigate("#/")} />}
       </main>
     </div>
   );

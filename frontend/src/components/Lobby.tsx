@@ -97,6 +97,20 @@ export default function Lobby({
 
   return (
     <>
+      {!address && (
+        <section className="panel practice-callout">
+          <div>
+            <p className="panel-label">start here</p>
+            <p className="send-hint">
+              No wallet, no stake. Play a bot for free and learn how the chain runs the game.
+            </p>
+          </div>
+          <a className="btn btn--primary" href="#/practice">
+            play free
+          </a>
+        </section>
+      )}
+
       <CreateArenaForm address={address} onCreated={onCreated} />
 
       <div>
@@ -147,6 +161,13 @@ export default function Lobby({
             ))}
           </div>
         </div>
+      )}
+
+      {address && (
+        <p className="practice-line">
+          Warming up or showing a friend the ropes: the <a href="#/practice">practice table</a> plays a
+          bot for free, no stake involved.
+        </p>
       )}
     </>
   );

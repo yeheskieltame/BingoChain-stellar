@@ -38,6 +38,10 @@ export default function Header({ wallet, balanceState }: HeaderProps) {
           </span>
         )}
 
+        <a className="chip chip--link" href="#/practice">
+          Practice
+        </a>
+
         <a className="chip chip--link" href="#/wallet">
           Send XLM
         </a>

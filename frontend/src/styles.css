@@ -822,6 +822,73 @@ button { font-family: inherit; }
 .skel--board { max-width: 430px; width: 100%; aspect-ratio: 1; border-radius: var(--r); }
 .skel--line { width: 60%; height: 13px; }
 
+/* ================================  PRACTICE  ============================= */
+
+.badge--practice {
+  color: var(--sky);
+  border-color: rgba(143, 208, 197, 0.45);
+  background: rgba(143, 208, 197, 0.1);
+}
+
+/* the coach: one hint per phase, the house voice at your shoulder */
+.coach {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--r);
+  border: 1px solid rgba(213, 170, 82, 0.4);
+  border-left-width: 3px;
+  background: var(--brass-dim);
+  animation: rise 0.3s ease both;
+}
+.coach-icon { flex-shrink: 0; margin-top: 3px; color: var(--brass); }
+.coach-label {
+  margin: 0 0 2px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.coach-msg { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--bone); }
+.coach-close {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.coach-close:hover { color: var(--bone); border-color: var(--line-strong); }
+
+.practice-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  max-width: 520px;
+  width: 100%;
+}
+.practice-callout .panel-label { margin-bottom: 4px; }
+.practice-callout .panel-label::after { display: none; }
+.practice-callout .send-hint { max-width: 300px; }
+
+.practice-line { margin: 0; font-size: 13px; color: var(--faint); }
+.practice-line a { color: var(--muted); border-bottom: 1px solid var(--line-strong); }
+.practice-line a:hover { color: var(--bone); border-bottom-color: var(--bone); }
+
+.state .board-setup-actions { margin-top: 8px; justify-content: center; }
+
 /* ================================  RESPONSIVE  =========================== */
 
 @media (max-width: 880px) {
