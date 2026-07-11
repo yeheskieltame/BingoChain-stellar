@@ -799,3 +799,90 @@ fn losing_claimant_gains_no_advantage() {
     assert_eq!(s.client.earnings_of(&p2), 19_800_000);
     assert_eq!(s.client.earnings_of(&admin), 200_000);
 }
+
+#[test]
+fn stale_committed_arena_cancelled_by_anyone_after_window() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let stranger = Address::generate(&s.env);
+
+    // Fill the table so it seals to Committed; nobody ever calls.
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt_of(&s.env, 1)));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt_of(&s.env, 2)));
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Committed);
+
+    // Past the join window a non creator may free the stranded stakes.
+    let created_at = s.client.get_arena(&id).created_at;
+    s.env.ledger().set_timestamp(created_at + 86_401);
+    s.client.cancel_arena(&id, &stranger);
+
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Cancelled);
+    assert_eq!(s.client.earnings_of(&p1), STAKE);
+    assert_eq!(s.client.earnings_of(&p2), STAKE);
+    assert_eq!(s.client.earnings_of(&stranger), 0);
+    // Every escrowed unit is refunded, still held by the contract for withdraw.
+    assert_eq!(
+        s.client.earnings_of(&p1) + s.client.earnings_of(&p2),
+        STAKE * 2
+    );
+    assert_eq!(
+        token::Client::new(&s.env, &s.token).balance(&s.contract_id),
+        STAKE * 2
+    );
+}
+
+#[test]
+fn committed_cancel_before_window_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+    let stranger = Address::generate(&s.env);
+
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt_of(&s.env, 1)));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt_of(&s.env, 2)));
+
+    // Inside the window nobody may cancel a full table, not even the creator.
+    assert_eq!(
+        s.client.try_cancel_arena(&id, &p1),
+        Err(Ok(Error::CancelNotAllowed))
+    );
+    assert_eq!(
+        s.client.try_cancel_arena(&id, &stranger),
+        Err(Ok(Error::CancelNotAllowed))
+    );
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Committed);
+}
+
+#[test]
+fn cancel_after_play_started_rejected() {
+    let s = setup();
+    let board = valid_board_bytes();
+    let p1 = funded_player(&s, STAKE);
+    let p2 = funded_player(&s, STAKE);
+
+    let id = s.client.create_arena(&p1, &STAKE, &2);
+    s.client
+        .commit_board(&id, &p1, &commit_for(&s.env, &board, &salt_of(&s.env, 1)));
+    s.client
+        .commit_board(&id, &p2, &commit_for(&s.env, &board, &salt_of(&s.env, 2)));
+    s.client.call_number(&id, &p1, &1);
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Playing);
+
+    // Once a call has landed the escape hatch closes, even past the window.
+    let created_at = s.client.get_arena(&id).created_at;
+    s.env.ledger().set_timestamp(created_at + 86_401);
+    assert_eq!(
+        s.client.try_cancel_arena(&id, &p1),
+        Err(Ok(Error::WrongState))
+    );
+    assert_eq!(s.client.get_arena(&id).state, ArenaState::Playing);
+}
