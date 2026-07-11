@@ -33,36 +33,36 @@ and a player with no revealed board simply cannot win.
 ## Architecture
 
 ```
- Player A: Freighter          Player B: Freighter
-         |  sign                       |  sign
-         v                             v
- +----------------------------------------------------+
- |              frontend (React + Vite + TS)          |
- |  lib/wallet.ts    lib/commit.ts    lib/errors.ts    |
- |  lib/horizon.ts   lib/contract.ts  lib/events.ts    |
- +-----------------+--------------------+--------------+
-                   |                    |
-      balance, classic payments   simulate, sign, submit,
-                   |                 poll getEvents
-                   v                    v
-        +------------------+   +----------------------+
-        |     Horizon      |   |     Soroban RPC       |
-        |    (testnet)     |   |      (testnet)        |
-        +------------------+   +-----------+------------+
-                                            |
-                                            v
-                          +--------------------------------+
-                          |     bingo contract (Rust)       |
-                          |  create_arena, commit_board,    |
-                          |  call_number, claim_bingo,      |
-                          |  reveal_board, settle, withdraw  |
-                          +----------------+-----------------+
-                                           |  token::Client transfer
-                                           v
-                          +--------------------------------+
-                          |   native XLM Stellar Asset      |
-                          |   Contract (escrow and payout)  |
-                          +--------------------------------+
+  Player A: Freighter           Player B: Freighter
+           |  sign                       |  sign
+           v                             v
+ +--------------------------------------------------+
+ |           frontend (React + Vite + TS)           |
+ | lib/wallet.ts    lib/commit.ts    lib/errors.ts  |
+ | lib/horizon.ts   lib/contract.ts  lib/events.ts  |
+ +---------+-----------------------------+----------+
+           |                             |
+  balance, classic payments   simulate, sign, submit,
+           |                      poll getEvents
+           v                             v
+  +------------------+        +----------------------+
+  |     Horizon      |        |     Soroban RPC      |
+  |    (testnet)     |        |      (testnet)       |
+  +------------------+        +-----------+----------+
+                                          |
+                                          v
+                        +----------------------------------+
+                        |      bingo contract (Rust)       |
+                        |   create_arena, commit_board,    |
+                        |    call_number, claim_bingo,     |
+                        |  reveal_board, settle, withdraw  |
+                        +---------------+------------------+
+                                        |  token::Client transfer
+                                        v
+                        +----------------------------------+
+                        |     native XLM Stellar Asset     |
+                        |   Contract (escrow and payout)   |
+                        +----------------------------------+
 ```
 
 Level 1 traffic (wallet connect, balance, plain XLM sends) goes through
@@ -154,7 +154,7 @@ pnpm dev
 | Requirement | Where it lives |
 | --- | --- |
 | Advanced contract logic: turn-based calls, claim, commit-reveal verification, replay-based settlement, pull-payment withdrawals | `contracts/bingo/src/lib.rs`, `board.rs` |
-| Inter-contract communication: stakes and payouts move through the native XLM Stellar Asset Contract | `token::Client::new(...).transfer` calls inside `commit_board`, `settle`, `withdraw` |
+| Inter-contract communication: stakes and payouts move through the native XLM Stellar Asset Contract | `token::Client::new(...).transfer` calls inside `commit_board` (stake escrow in) and `withdraw` (payout out); `settle` only assigns earnings that `withdraw` then pays |
 | Live event streaming drives the UI instead of polling game state | `frontend/src/lib/events.ts`, `frontend/src/hooks/useArena.ts`, `frontend/src/components/GameRoom.tsx` |
 | CI on every push and pull request: format, lint, test, build for contract and frontend | `.github/workflows/ci.yml` |
 | A repeatable, idempotent deploy workflow | `scripts/deploy.sh` |
