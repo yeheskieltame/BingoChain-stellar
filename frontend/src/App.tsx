@@ -4,21 +4,23 @@ import { ArrowLeftIcon } from "./components/Icons";
 import BoardSetup from "./components/BoardSetup";
 import Header from "./components/Header";
 import Lobby from "./components/Lobby";
+import SendXlmCard from "./components/SendXlmCard";
 import { useArenas } from "./hooks/useArenas";
 import { useBalance } from "./hooks/useBalance";
 import { useWallet } from "./hooks/useWallet";
 import { readArena } from "./lib/contract";
 import { errorMessage, mapError } from "./lib/errors";
 
-type Route = { name: "lobby" } | { name: "arena"; id: number };
+type Route = { name: "lobby" } | { name: "arena"; id: number } | { name: "wallet" };
 
 function parseHash(hash: string): Route {
   const match = hash.match(/^#\/arena\/(\d+)$/);
   if (match) return { name: "arena", id: Number(match[1]) };
+  if (hash === "#/wallet") return { name: "wallet" };
   return { name: "lobby" };
 }
 
-/** Hand-rolled hash routing: no router dependency for two routes. */
+/** Hand-rolled hash routing: no router dependency for three routes. */
 function useHashRoute(): [Route, (hash: string) => void] {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
 
@@ -45,7 +47,7 @@ export default function App() {
     <div className="shell">
       <Header wallet={wallet} balanceState={balanceState} />
       <main className="placeholder-main">
-        {route.name === "lobby" ? (
+        {route.name === "lobby" && (
           <Lobby
             address={wallet.address}
             arenas={arenasState.arenas}
@@ -58,7 +60,8 @@ export default function App() {
               navigate(`#/arena/${id}`);
             }}
           />
-        ) : (
+        )}
+        {route.name === "arena" && (
           <ArenaRoom
             arenaId={route.id}
             address={wallet.address}
@@ -66,7 +69,38 @@ export default function App() {
             onChanged={arenasState.refresh}
           />
         )}
+        {route.name === "wallet" && (
+          <WalletView
+            address={wallet.address}
+            onBack={() => navigate("#/")}
+            onSuccess={balanceState.refresh}
+          />
+        )}
       </main>
+    </div>
+  );
+}
+
+interface WalletViewProps {
+  address: string | null;
+  onBack(): void;
+  /** Refreshes the header balance after a confirmed payment. */
+  onSuccess(): void;
+}
+
+/** The Level 1 send-XLM flow, kept reachable from the header at #/wallet. */
+function WalletView({ address, onBack, onSuccess }: WalletViewProps) {
+  return (
+    <div>
+      <div className="room-bar">
+        <button type="button" className="btn btn--icon" onClick={onBack} aria-label="Back to lobby">
+          <ArrowLeftIcon size={16} />
+        </button>
+        <div className="room-title">
+          <h2>Wallet</h2>
+        </div>
+      </div>
+      <SendXlmCard address={address} onSuccess={onSuccess} />
     </div>
   );
 }

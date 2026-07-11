@@ -3,7 +3,7 @@ import { useState } from "react";
 import { arenaClient, signAndSubmit, simulationError, unwrapResult } from "../lib/contract";
 import { useTx } from "../hooks/useTx";
 import { CONFIG } from "../lib/config";
-import { boardCommitment, newSalt, randomBoard, saveReveal } from "../lib/commit";
+import { boardCommitment, loadReveal, newSalt, randomBoard, saveReveal } from "../lib/commit";
 import { DiceIcon } from "./Icons";
 import TxStatus from "./TxStatus";
 
@@ -17,13 +17,19 @@ interface BoardSetupProps {
 /** 5x5 board picker: tap two cells to swap them, or shuffle for a fresh layout. */
 export default function BoardSetup({ arenaId, address, onCommitted }: BoardSetupProps) {
   const { state, run, reset } = useTx();
-  const [board, setBoard] = useState<number[]>(() => randomBoard());
+  // A reveal record saved by an earlier commit attempt for this arena and
+  // address. If one exists it is reused verbatim and never overwritten:
+  // that commit may have landed on chain even though the client saw an
+  // error, and the record holds the only preimage that can reveal it.
+  const [saved, setSaved] = useState(() => loadReveal(CONFIG.contractId, arenaId, address));
+  const [board, setBoard] = useState<number[]>(() => saved?.board ?? randomBoard());
   const [selected, setSelected] = useState<number | null>(null);
 
   const busy = state.phase === "building" || state.phase === "signing" || state.phase === "submitting";
+  const locked = saved !== null;
 
   function tapCell(i: number) {
-    if (busy) return;
+    if (busy || locked) return;
     if (selected === null) {
       setSelected(i);
       return;
@@ -41,7 +47,7 @@ export default function BoardSetup({ arenaId, address, onCommitted }: BoardSetup
   }
 
   function shuffle() {
-    if (busy) return;
+    if (busy || locked) return;
     setBoard(randomBoard());
     setSelected(null);
   }
@@ -51,12 +57,19 @@ export default function BoardSetup({ arenaId, address, onCommitted }: BoardSetup
     void run(async (report) => {
       report("building");
 
-      const salt = newSalt();
-      // Saved before the transaction is even built: a crash mid-commit can
-      // never strand the stake. Only clearing site data after this point
-      // does, since the salt would be gone.
-      saveReveal(CONFIG.contractId, arenaId, address, board, salt);
-      const commitment = await boardCommitment(board, salt);
+      // Reuse the existing reveal record if one exists (re-read here in
+      // case another tab wrote one since mount); otherwise mint a fresh
+      // salt and save BEFORE the transaction is built, so a crash
+      // mid-commit can never strand the stake. An existing record is
+      // never overwritten with a new salt.
+      const existing = loadReveal(CONFIG.contractId, arenaId, address);
+      const commitBoard = existing?.board ?? board;
+      const salt = existing?.salt ?? newSalt();
+      if (!existing) {
+        saveReveal(CONFIG.contractId, arenaId, address, commitBoard, salt);
+        setSaved({ board: commitBoard, salt });
+      }
+      const commitment = await boardCommitment(commitBoard, salt);
 
       const client = arenaClient(address);
       const tx = await client.commit_board({
@@ -86,7 +99,7 @@ export default function BoardSetup({ arenaId, address, onCommitted }: BoardSetup
             key={i}
             className={`cell board-cell ${selected === i ? "cell--selected" : ""}`}
             onClick={() => tapCell(i)}
-            disabled={busy}
+            disabled={busy || locked}
             aria-pressed={selected === i}
           >
             <span className="cell-num">{n}</span>
@@ -95,18 +108,25 @@ export default function BoardSetup({ arenaId, address, onCommitted }: BoardSetup
       </div>
 
       <div className="board-setup-actions">
-        <button type="button" className="btn btn--ghost" onClick={shuffle} disabled={busy}>
+        <button type="button" className="btn btn--ghost" onClick={shuffle} disabled={busy || locked}>
           <DiceIcon size={14} /> shuffle
         </button>
         <button type="button" className="btn btn--primary" onClick={onCommit} disabled={busy}>
-          {busy ? "sealing..." : "commit board and stake"}
+          {busy ? "sealing..." : locked ? "retry commit" : "commit board and stake"}
         </button>
       </div>
 
-      <p className="board-setup-warn">
-        The board and salt are saved on this device only. Clearing site data before the
-        reveal phase forfeits your stake.
-      </p>
+      {locked ? (
+        <p className="board-setup-warn">
+          A sealed board is already saved for this arena, so it is reused as is. A fresh
+          salt would make an earlier on-chain commit impossible to reveal.
+        </p>
+      ) : (
+        <p className="board-setup-warn">
+          The board and salt are saved on this device only. Clearing site data before the
+          reveal phase forfeits your stake.
+        </p>
+      )}
 
       <TxStatus state={state} onRetry={reset} />
     </section>

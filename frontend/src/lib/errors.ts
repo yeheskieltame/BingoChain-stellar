@@ -3,6 +3,7 @@
 // hint), network failure. Everything else falls back to a plain unknown
 // error so nothing throws unhandled.
 
+import { TxSubmitError } from "./tx";
 import { WrongNetworkError } from "./wallet";
 
 export type ContractErrorName =
@@ -68,24 +69,39 @@ export type AppError =
 // Soroban RPC reports a trapped contract call as "Error(Contract, #N)"
 // somewhere in the simulation or transaction result string.
 const CONTRACT_CODE_RE = /Error\(Contract,\s*#(\d+)\)/;
-const DECLINE_RE = /declin|reject|denied|user cancel/i;
+// Freighter decline wording only: "User declined access", "Freighter
+// declined to sign...", "The user rejected this request", denied, cancel.
+// Deliberately NOT a bare "reject": Horizon submit failures say "Horizon
+// rejected the transaction" and must never render as a wallet decline.
+const DECLINE_RE = /declin|denied|user reject|user cancel/i;
 const NETWORK_RE =
   /network|fetch|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|getaddrinfo|timed? ?out|load failed/i;
 
 function messageOf(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
+  // Non-Error object throws (Freighter api results, axios-like errors)
+  // often carry a message property; prefer it over "[object Object]".
+  if (e && typeof e === "object" && "message" in e && typeof e.message === "string") {
+    return e.message;
+  }
   return String(e);
 }
 
 /**
  * Map anything thrown by a wallet call or a contract call to a typed
- * AppError. Order matters: wrong network and wallet decline are checked
- * before the generic network regex, since both can otherwise look like a
- * network failure.
+ * AppError. Order matters: wrong network, Horizon submit rejections, and
+ * wallet decline are checked before the generic regexes, since each can
+ * otherwise look like a different class.
  */
 export function mapError(e: unknown): AppError {
   if (e instanceof WrongNetworkError) return { kind: "wrong-network" };
+
+  // A Horizon rejection of a submitted classic transaction is not a wallet
+  // decline, whatever its message says. Classified unknown on purpose:
+  // useTx falls back to mapTxError for these, which knows the Horizon
+  // result codes (op_underfunded and friends).
+  if (e instanceof TxSubmitError) return { kind: "unknown", detail: messageOf(e) };
 
   const message = messageOf(e);
 
