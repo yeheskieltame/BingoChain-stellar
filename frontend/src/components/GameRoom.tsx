@@ -318,8 +318,9 @@ function PlayRoom({
     if (!address || claimBusy) return;
     const confirmed = window.confirm(
       "Claim bingo now? Claiming ends the calling phase for everyone and opens the reveal. " +
-        "Settlement replays every revealed board against the recorded calls and decides the winners " +
-        "there, so a claim without five real lines only freezes the round, it cannot win it."
+        "The claim itself proves nothing: settlement replays the recorded calls against every " +
+        "revealed board, the earliest fifth line wins, and if nobody reached five, the most " +
+        "completed lines take the pot."
     );
     if (!confirmed) return;
     void claimTx.run(async (report) => {

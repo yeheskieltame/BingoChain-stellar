@@ -24,7 +24,7 @@ function parseHash(hash: string): Route {
   return { name: "lobby" };
 }
 
-/** Hand-rolled hash routing: no router dependency for three routes. */
+/** Hand-rolled hash routing: no router dependency for four routes. */
 function useHashRoute(): [Route, (hash: string) => void] {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
 

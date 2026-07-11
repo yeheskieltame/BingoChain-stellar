@@ -41,9 +41,10 @@ const COACH: Record<PracticePhase, string> = {
     "On chain this opens a 24 hour reveal window where each player proves " +
     "their board matches the commitment they sealed at the start.",
   settled:
-    "Settlement replayed the calls against both boards and paid the earliest fifth line. " +
-    "The contract does exactly this with the revealed boards, " +
-    "which is why a false claim can freeze a round but never win it.",
+    "Settlement replayed the calls against both boards: the earliest fifth line wins, " +
+    "and if nobody reached five, the most completed lines take the pot. " +
+    "The contract does the same with revealed boards; the claim itself proves nothing, " +
+    "it only freezes the round.",
 };
 
 /** "1st", "2nd", "3rd"... Local copy of GameRoom's helper: importing it from
