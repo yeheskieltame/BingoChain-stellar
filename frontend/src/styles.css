@@ -600,8 +600,8 @@ button { font-family: inherit; }
 .board-cell { cursor: pointer; }
 .board-cell:not(:disabled):hover { transform: translateY(-2px); }
 .board-cell:disabled { cursor: not-allowed; }
-/* uncalled cells dim on a dead turn; called marks stay at full strength */
-.board-cell:disabled:not(.cell--called) { filter: saturate(0.7) brightness(0.82); }
+/* unmarked cells dim on a dead turn; dauber marks stay at full strength */
+.board-cell:disabled:not(.cell--marked) { filter: saturate(0.7) brightness(0.82); }
 
 .cell--selected {
   transform: translateY(-3px) rotate(-2deg);
@@ -610,8 +610,8 @@ button { font-family: inherit; }
 }
 .board-cell.cell--selected:not(:disabled):hover { transform: translateY(-3px) rotate(-2deg); }
 
-/* the dauber: a hand-stamped ink ring over called and marked numbers */
-.cell--called::after, .cell--marked::after {
+/* the dauber: a hand-stamped ink ring over marked numbers */
+.cell--marked::after {
   content: "";
   position: absolute;
   inset: 12%;
@@ -625,7 +625,16 @@ button { font-family: inherit; }
   from { opacity: 0; transform: scale(1.5) rotate(-6deg); }
   to { opacity: 1; transform: scale(1) rotate(-6deg) scaleX(1.04); }
 }
-.cell--called .cell-num, .cell--marked .cell-num { color: var(--dauber); }
+.cell--marked .cell-num { color: var(--dauber); }
+
+/* the most recent call, yours or theirs, wears a brass ring */
+.cell--latest {
+  box-shadow:
+    0 0 0 2px var(--brass),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 2px 3px -1px rgba(0, 0, 0, 0.45);
+  z-index: 2;
+}
 .cell-order {
   position: absolute;
   top: 3px;
@@ -638,7 +647,33 @@ button { font-family: inherit; }
 }
 
 .claim-row { margin-top: 16px; }
-.your-board { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+/* the read-only call record for viewers without a board at this table */
+.call-record {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  max-width: 430px;
+}
+.call-chip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--paper-edge);
+  background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
+  font-family: var(--serif);
+  font-weight: 580;
+  font-variation-settings: "opsz" 30;
+  font-size: 16px;
+  color: var(--dauber);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 3px -1px rgba(0, 0, 0, 0.45);
+}
 
 .board-setup-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .board-setup-actions .btn--primary { flex: 1; min-width: 200px; }

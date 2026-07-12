@@ -1,75 +1,15 @@
-// A pure, synchronous practice engine mirroring contracts/bingo/src/board.rs
-// and the contract's settlement rules exactly, so what the bot game teaches
-// is what the chain enforces. No wallet, no contract, no transactions: this
-// file must never import from wallet.ts, contract.ts, tx.ts, or the
-// generated bindings. State is immutable; every function returns a new state
-// or, for a rejected move, the same state unchanged.
+// A pure, synchronous practice engine mirroring the contract's rules
+// exactly, so what the bot game teaches is what the chain enforces. The
+// board math itself lives in board.ts and is re-exported here so the engine
+// API is unchanged. No wallet, no contract, no transactions: this file must
+// never import from wallet.ts, contract.ts, tx.ts, or the generated
+// bindings. State is immutable; every function returns a new state or, for
+// a rejected move, the same state unchanged.
 
+import { BINGO_LINES, LINE_MASKS, MAX_NUMBER, bingoIndex, countCompletedLines, marks } from "./board";
 import { isValidBoard, randomBoard } from "./commit";
 
-const MAX_NUMBER = 25;
-const BINGO_LINES = 5;
-
-/** The 12 winning lines as bitmasks over the 25 cell positions (bit p set
- * when cell p = row * 5 + col is on the line): 5 rows, 5 columns, 2
- * diagonals. Values copied verbatim from the contract's LINE_MASKS. */
-export const LINE_MASKS: number[] = [
-  0x000001f, // row 0    positions 0-4
-  0x00003e0, // row 1    positions 5-9
-  0x0007c00, // row 2    positions 10-14
-  0x00f8000, // row 3    positions 15-19
-  0x1f00000, // row 4    positions 20-24
-  0x0108421, // col 0    positions 0,5,10,15,20
-  0x0210842, // col 1    positions 1,6,11,16,21
-  0x0421084, // col 2    positions 2,7,12,17,22
-  0x0842108, // col 3    positions 3,8,13,18,23
-  0x1084210, // col 4    positions 4,9,14,19,24
-  0x1041041, // main diagonal    positions 0,6,12,18,24
-  0x0111110, // anti diagonal    positions 4,8,12,16,20
-];
-
-/** How many of the 12 lines are fully contained in the marked-cell mask. */
-export function countCompletedLines(marked: number): number {
-  let count = 0;
-  for (const lm of LINE_MASKS) {
-    if ((marked & lm) === lm) count++;
-  }
-  return count;
-}
-
-/** Marked cell bitmask for board given the called numbers: bit p set when
- * the number at cell p is in calledMask (bit n-1 set for number n). */
-export function marks(board: number[], calledMask: number): number {
-  let marked = 0;
-  board.forEach((n, position) => {
-    if (n >= 1 && n <= MAX_NUMBER && (calledMask & (1 << (n - 1))) !== 0) {
-      marked |= 1 << position;
-    }
-  });
-  return marked;
-}
-
-/** Earliest 1-based call index at which replaying calls against board
- * reaches at least 5 completed lines, or null if it never does. Matches the
- * contract's bingo_index replay, including skipping out-of-range calls. */
-export function bingoIndex(board: number[], calls: number[]): number | null {
-  // positionOf[n] holds the 1-based cell index of number n, 0 when absent.
-  const positionOf = new Array<number>(MAX_NUMBER + 1).fill(0);
-  board.forEach((n, position) => {
-    if (n >= 1 && n <= MAX_NUMBER) positionOf[n] = position + 1;
-  });
-
-  let marked = 0;
-  for (let i = 0; i < calls.length; i++) {
-    const c = calls[i];
-    if (c < 1 || c > MAX_NUMBER) continue;
-    const cell = positionOf[c];
-    if (cell === 0) continue;
-    marked |= 1 << (cell - 1);
-    if (countCompletedLines(marked) >= BINGO_LINES) return i + 1;
-  }
-  return null;
-}
+export { LINE_MASKS, bingoIndex, countCompletedLines, marks };
 
 export type PracticePhase = "setup" | "playing" | "claimed" | "settled";
 

@@ -22,7 +22,6 @@ interface PracticeRoomProps {
   onBack(): void;
 }
 
-const BOARD_NUMBERS = Array.from({ length: 25 }, (_, i) => i + 1);
 const BOT_DELAY_MS = 900;
 
 // One hint per phase: what is happening at this table now, and what the real
@@ -33,9 +32,9 @@ const COACH: Record<PracticePhase, string> = {
     "In the real game only a hash of this layout goes on chain, sealed with a secret salt, " +
     "and your stake locks in escrow the moment you commit.",
   playing:
-    "You and the bot take turns calling numbers, and every call marks both boards. " +
-    "On chain each call is its own signed transaction, public and replayable. " +
-    "Complete 5 of the 12 lines: rows, columns, both diagonals.",
+    "Your board is the call sheet: on your turn, tap an unmarked cell to call its number. " +
+    "Every board holds the same 25 numbers, and on chain each call is its own signed " +
+    "transaction, public and replayable. Complete 5 of the 12 lines: rows, columns, both diagonals.",
   claimed:
     "The claim froze the call sequence; nobody can call again. " +
     "On chain this opens a 24 hour reveal window where each player proves " +
@@ -181,6 +180,7 @@ function PracticePlay({
 }) {
   const frozen = game.phase === "claimed";
   const yourLines = countCompletedLines(marks(game.playerBoard, game.calledMask));
+  const lastCall = game.calls.length > 0 ? game.calls[game.calls.length - 1] : null;
 
   const calledOrder = new Map<number, number>();
   game.calls.forEach((n, i) => calledOrder.set(n, i + 1));
@@ -192,13 +192,13 @@ function PracticePlay({
         ? "the bot claimed bingo, the round is frozen"
         : "all 25 numbers called, the round is frozen"
     : game.playerTurn
-      ? "your call"
+      ? "your call, tap an unmarked cell"
       : "the bot is thinking";
 
   return (
     <div className="room-grid">
       <section className="panel">
-        <p className="panel-label">call board</p>
+        <p className="panel-label">your board, {yourLines} of 5 lines</p>
 
         <p className={`turn-strip ${!frozen && game.playerTurn ? "turn-strip--you" : ""}`} role="status">
           <span className="turn-dot" aria-hidden />
@@ -206,20 +206,21 @@ function PracticePlay({
         </p>
 
         <div className="card-grid">
-          {BOARD_NUMBERS.map((n) => {
+          {game.playerBoard.map((n, i) => {
             const order = calledOrder.get(n);
-            const disabled = frozen || !game.playerTurn || order !== undefined;
+            const marked = order !== undefined;
+            const disabled = frozen || !game.playerTurn || marked;
             return (
               <button
                 type="button"
-                key={n}
-                className={`cell board-cell ${order !== undefined ? "cell--called" : ""}`}
+                key={i}
+                className={`cell board-cell ${marked ? "cell--marked" : ""} ${n === lastCall ? "cell--latest" : ""}`}
                 onClick={() => onChange(callNumber(game, n))}
                 disabled={disabled}
-                aria-label={order !== undefined ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
+                aria-label={marked ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
               >
                 <span className="cell-num">{n}</span>
-                {order !== undefined && <span className="cell-order">{order}</span>}
+                {marked && <span className="cell-order">{order}</span>}
               </button>
             );
           })}
@@ -243,11 +244,6 @@ function PracticePlay({
               <TrophyIcon size={14} /> claim bingo
             </button>
           )}
-        </div>
-
-        <div className="your-board">
-          <p className="panel-label">your board, {yourLines} of 5 lines</p>
-          <PracticeBoard board={game.playerBoard} calledMask={game.calledMask} />
         </div>
       </section>
 

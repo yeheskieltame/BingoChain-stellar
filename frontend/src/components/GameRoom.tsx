@@ -20,8 +20,6 @@ interface GameRoomProps {
   onChanged(): void;
 }
 
-const BOARD_NUMBERS = Array.from({ length: 25 }, (_, i) => i + 1);
-
 /** "1st", "2nd", "3rd", "4th"... for the call-order screen reader labels. */
 function addOrdinal(n: number): string {
   const mod10 = n % 10;
@@ -296,8 +294,10 @@ function PlayRoom({
   const claimBusy =
     claimTx.state.phase === "building" || claimTx.state.phase === "signing" || claimTx.state.phase === "submitting";
 
+  const calls = Array.from(arena.call_sequence);
+  const lastCall = calls.length > 0 ? calls[calls.length - 1] : null;
   const calledOrder = new Map<number, number>();
-  Array.from(arena.call_sequence).forEach((n, i) => calledOrder.set(n, i + 1));
+  calls.forEach((n, i) => calledOrder.set(n, i + 1));
 
   function callNumber(n: number) {
     if (!address || !myTurn || callBusy || calledOrder.has(n)) return;
@@ -350,7 +350,7 @@ function PlayRoom({
   return (
     <div className="room-grid">
       <section className="panel">
-        <p className="panel-label">call board</p>
+        <p className="panel-label">{myReveal ? "your board" : "call record"}</p>
 
         <p className={`turn-strip ${myTurn ? "turn-strip--you" : ""}`} role="status">
           <span className="turn-dot" aria-hidden />
@@ -360,30 +360,50 @@ function PlayRoom({
         {!isPlayer && (
           <p className="call-note">
             {address
-              ? "This wallet holds no seat here, so the board is read only."
-              : "Connect the wallet seated at this table to call numbers."}
+              ? "This wallet holds no seat here, so the record below is read only."
+              : "Connect the wallet seated at this table to play its board."}
           </p>
         )}
 
-        <div className="card-grid">
-          {BOARD_NUMBERS.map((n) => {
-            const order = calledOrder.get(n);
-            const disabled = !isPlayer || !myTurn || callBusy || order !== undefined;
-            return (
-              <button
-                type="button"
-                key={n}
-                className={`cell board-cell ${order !== undefined ? "cell--called" : ""}`}
-                onClick={() => callNumber(n)}
-                disabled={disabled}
-                aria-label={order !== undefined ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
-              >
-                <span className="cell-num">{n}</span>
-                {order !== undefined && <span className="cell-order">{order}</span>}
-              </button>
-            );
-          })}
-        </div>
+        {myReveal ? (
+          <>
+            {isPlayer && (
+              <p className="call-note">
+                Your board is the call sheet: on your turn, tap an unmarked cell to call its number.
+              </p>
+            )}
+            <div className="card-grid">
+              {myReveal.board.map((n, i) => {
+                const order = calledOrder.get(n);
+                const marked = order !== undefined;
+                const disabled = !isPlayer || !myTurn || callBusy || marked;
+                return (
+                  <button
+                    type="button"
+                    key={i}
+                    className={`cell board-cell ${marked ? "cell--marked" : ""} ${n === lastCall ? "cell--latest" : ""}`}
+                    onClick={() => callNumber(n)}
+                    disabled={disabled}
+                    aria-label={marked ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
+                  >
+                    <span className="cell-num">{n}</span>
+                    {marked && <span className="cell-order">{order}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            {isPlayer && (
+              <p className="call-note">
+                No saved board on this device, so there is nothing to play from; the call record below
+                is read only.
+              </p>
+            )}
+            <CallRecord calls={calls} />
+          </>
+        )}
 
         {arena.state.tag === "Playing" && isPlayer && (
           <div className="claim-row">
@@ -394,26 +414,28 @@ function PlayRoom({
           </div>
         )}
         <TxStatus state={callTx.state} onRetry={callTx.reset} />
-
-        {myReveal && (
-          <div className="your-board">
-            <p className="panel-label">your board</p>
-            <div className="card-grid">
-              {myReveal.board.map((n, i) => {
-                const marked = (arena.called_mask & (1 << (n - 1))) !== 0;
-                return (
-                  <div key={i} className={`cell ${marked ? "cell--marked" : ""}`}>
-                    <span className="cell-num">{n}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </section>
 
       <PlayersPanel arena={arena} address={address} revealStatus={revealStatus} />
     </div>
+  );
+}
+
+/** The compact, read-only record of calls in order, for viewers without a
+ * board here: spectators, and a seated player whose reveal record is gone. */
+function CallRecord({ calls }: { calls: number[] }) {
+  if (calls.length === 0) {
+    return <p className="call-note">No calls yet.</p>;
+  }
+  return (
+    <ol className="call-record" aria-label="Call record, in order">
+      {calls.map((n, i) => (
+        <li key={i} className="call-chip">
+          <span className="cell-order">{i + 1}</span>
+          {n}
+        </li>
+      ))}
+    </ol>
   );
 }
 
