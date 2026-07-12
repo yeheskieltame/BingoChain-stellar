@@ -355,7 +355,7 @@ function PlayRoom({
   return (
     <div className="room-grid">
       <section className="panel">
-        <p className="panel-label">{myReveal ? "your board" : "call record"}</p>
+        <p className="panel-label">{myReveal ? "your board" : isPlayer ? "call sheet" : "call record"}</p>
 
         <p className={`turn-strip ${myTurn ? "turn-strip--you" : ""}`} role="status">
           <span className="turn-dot" aria-hidden />
@@ -404,16 +404,21 @@ function PlayRoom({
               <BingoMeter lines={myLines} />
             </div>
           </>
-        ) : (
+        ) : isPlayer ? (
           <>
-            {isPlayer && (
-              <p className="call-note">
-                No saved board on this device, so there is nothing to play from; the call record below
-                is read only.
-              </p>
-            )}
-            <CallRecord calls={calls} />
+            <p className="call-note">
+              No saved board on this device. You can still call and claim from the sheet below, but
+              with nothing to reveal, this stake is forfeit at settlement.
+            </p>
+            <CallSheet
+              calledOrder={calledOrder}
+              myTurn={myTurn}
+              busy={callBusy}
+              onCall={callNumber}
+            />
           </>
+        ) : (
+          <CallRecord calls={calls} />
         )}
 
         {arena.state.tag === "Playing" && isPlayer && (
@@ -437,8 +442,47 @@ function PlayRoom({
   );
 }
 
-/** The compact, read-only record of calls in order, for viewers without a
- * board here: spectators, and a seated player whose reveal record is gone. */
+const SHEET_NUMBERS = Array.from({ length: 25 }, (_, i) => i + 1);
+
+/** The 1..25 call sheet for a seated player whose reveal record is gone.
+ * The contract never needs your board to call, so their turn must not
+ * stall the table: uncalled numbers stay tappable on their turn and fire
+ * the same call_number path the board cells use. */
+function CallSheet({
+  calledOrder,
+  myTurn,
+  busy,
+  onCall,
+}: {
+  calledOrder: Map<number, number>;
+  myTurn: boolean;
+  busy: boolean;
+  onCall(n: number): void;
+}) {
+  return (
+    <div className="call-record">
+      {SHEET_NUMBERS.map((n) => {
+        const order = calledOrder.get(n);
+        const called = order !== undefined;
+        return (
+          <button
+            type="button"
+            key={n}
+            className={`call-chip call-chip--live ${called ? "call-chip--called" : ""}`}
+            onClick={() => onCall(n)}
+            disabled={called || !myTurn || busy}
+            aria-label={called ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
+          >
+            {called && <span className="cell-order">{order}</span>}
+            {n}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The compact, read-only record of calls in order, for spectators. */
 function CallRecord({ calls }: { calls: number[] }) {
   if (calls.length === 0) {
     return <p className="call-note">No calls yet.</p>;

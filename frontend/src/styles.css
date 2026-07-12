@@ -715,6 +715,7 @@ button { font-family: inherit; }
   place-items: center;
   width: 44px;
   height: 44px;
+  padding: 0;
   border-radius: var(--r-sm);
   border: 1px solid var(--paper-edge);
   background: linear-gradient(180deg, var(--paper-hi), var(--paper-lo));
@@ -725,6 +726,17 @@ button { font-family: inherit; }
   color: var(--dauber);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 2px 3px -1px rgba(0, 0, 0, 0.45);
 }
+
+/* the live sheet: same chips, but uncalled numbers are playable buttons */
+.call-chip--live {
+  color: var(--paper-ink);
+  cursor: pointer;
+  transition: transform 0.12s, filter 0.15s;
+}
+.call-chip--live:not(:disabled):hover { transform: translateY(-2px); }
+.call-chip--live:disabled { cursor: not-allowed; }
+.call-chip--live:disabled:not(.call-chip--called) { filter: saturate(0.7) brightness(0.82); }
+.call-chip--called { color: var(--dauber); }
 
 .board-setup-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .board-setup-actions .btn--primary { flex: 1; min-width: 200px; }
