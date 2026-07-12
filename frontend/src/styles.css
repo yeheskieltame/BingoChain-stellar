@@ -648,6 +648,57 @@ button { font-family: inherit; }
 
 .claim-row { margin-top: 16px; }
 
+/* one board with its strike overlay, the letter meter on the rail */
+.board-flex { display: flex; gap: 14px; align-items: stretch; }
+.board-wrap { position: relative; width: 100%; max-width: 430px; }
+.board-wrap .card-grid { max-width: none; }
+.strike-svg {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.strike-line {
+  stroke: var(--dauber);
+  stroke-width: 0.14;
+  stroke-linecap: round;
+  opacity: 0.6;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: strike-draw 0.45s ease-out both;
+}
+@keyframes strike-draw { from { stroke-dashoffset: 1; } }
+
+.bingo-meter { display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+.meter-letter {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  flex: 1;
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--line-strong);
+  background: var(--well);
+  font-family: var(--serif);
+  font-weight: 640;
+  font-variation-settings: "opsz" 40;
+  font-size: 19px;
+  color: var(--faint);
+  opacity: 0.55;
+}
+.meter-letter--lit {
+  opacity: 1;
+  color: #241d0c;
+  background: linear-gradient(180deg, #e0ba69, var(--brass));
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  animation: letter-pop 0.3s cubic-bezier(0.2, 1.4, 0.5, 1) both;
+}
+@keyframes letter-pop { from { transform: scale(1.3); } }
+
 /* the read-only call record for viewers without a board at this table */
 .call-record {
   list-style: none;
@@ -930,6 +981,11 @@ button { font-family: inherit; }
   .room-grid { grid-template-columns: 1fr; }
   .card-grid { max-width: none; }
   .cell { border-radius: 6px; }
+  /* the meter drops below the board and runs horizontally */
+  .board-flex { flex-direction: column; }
+  .board-wrap { max-width: none; }
+  .bingo-meter { flex-direction: row; }
+  .meter-letter { width: auto; min-height: 0; height: 44px; }
 }
 
 @media (max-width: 480px) {

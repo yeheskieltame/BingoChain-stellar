@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Arena } from "bingo-client";
+import { BingoMeter, LineStrikes } from "./BingoMeter";
 import BoardSetup from "./BoardSetup";
 import RevealPanel from "./RevealPanel";
 import TxStatus from "./TxStatus";
 import { STATE_LABEL } from "./Lobby";
 import { ArrowLeftIcon, CheckIcon, TrophyIcon, UsersIcon } from "./Icons";
+import { completedLineIndexes, countCompletedLines, marks } from "../lib/board";
 import { arenaClient, signAndSubmit, simulationError, unwrapResult } from "../lib/contract";
 import { useArena } from "../hooks/useArena";
 import { useTx } from "../hooks/useTx";
@@ -299,6 +301,9 @@ function PlayRoom({
   const calledOrder = new Map<number, number>();
   calls.forEach((n, i) => calledOrder.set(n, i + 1));
 
+  const markedMask = myReveal ? marks(myReveal.board, arena.called_mask) : 0;
+  const myLines = countCompletedLines(markedMask);
+
   function callNumber(n: number) {
     if (!address || !myTurn || callBusy || calledOrder.has(n)) return;
     void callTx.run(async (report) => {
@@ -372,25 +377,31 @@ function PlayRoom({
                 Your board is the call sheet: on your turn, tap an unmarked cell to call its number.
               </p>
             )}
-            <div className="card-grid">
-              {myReveal.board.map((n, i) => {
-                const order = calledOrder.get(n);
-                const marked = order !== undefined;
-                const disabled = !isPlayer || !myTurn || callBusy || marked;
-                return (
-                  <button
-                    type="button"
-                    key={i}
-                    className={`cell board-cell ${marked ? "cell--marked" : ""} ${n === lastCall ? "cell--latest" : ""}`}
-                    onClick={() => callNumber(n)}
-                    disabled={disabled}
-                    aria-label={marked ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
-                  >
-                    <span className="cell-num">{n}</span>
-                    {marked && <span className="cell-order">{order}</span>}
-                  </button>
-                );
-              })}
+            <div className="board-flex">
+              <div className="board-wrap">
+                <div className="card-grid">
+                  {myReveal.board.map((n, i) => {
+                    const order = calledOrder.get(n);
+                    const marked = order !== undefined;
+                    const disabled = !isPlayer || !myTurn || callBusy || marked;
+                    return (
+                      <button
+                        type="button"
+                        key={i}
+                        className={`cell board-cell ${marked ? "cell--marked" : ""} ${n === lastCall ? "cell--latest" : ""}`}
+                        onClick={() => callNumber(n)}
+                        disabled={disabled}
+                        aria-label={marked ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
+                      >
+                        <span className="cell-num">{n}</span>
+                        {marked && <span className="cell-order">{order}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <LineStrikes lineIndexes={completedLineIndexes(markedMask)} />
+              </div>
+              <BingoMeter lines={myLines} />
             </div>
           </>
         ) : (
@@ -407,7 +418,12 @@ function PlayRoom({
 
         {arena.state.tag === "Playing" && isPlayer && (
           <div className="claim-row">
-            <button type="button" className="btn btn--win btn--block" onClick={claimBingo} disabled={claimBusy}>
+            <button
+              type="button"
+              className={`btn ${myLines >= 5 ? "btn--win" : "btn--ghost"} btn--block`}
+              onClick={claimBingo}
+              disabled={claimBusy}
+            >
               <TrophyIcon size={14} /> {claimBusy ? "claiming" : "claim bingo"}
             </button>
             <TxStatus state={claimTx.state} onRetry={claimTx.reset} />

@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
+import { bingoIndex, completedLineIndexes, countCompletedLines, marks } from "../lib/board";
 import { randomBoard } from "../lib/commit";
 import {
-  bingoIndex,
   botMove,
   callNumber,
   claim,
-  countCompletedLines,
-  marks,
   newPractice,
   settle,
   type PracticePhase,
   type PracticeState,
 } from "../lib/practice";
+import { BingoMeter, LineStrikes } from "./BingoMeter";
 import { ArrowLeftIcon, DiceIcon, SparkleIcon, TrophyIcon, UsersIcon, XIcon } from "./Icons";
 
 // The zero-risk front door: a full round against a bot, entirely in the
@@ -179,7 +178,8 @@ function PracticePlay({
   onChange(next: PracticeState): void;
 }) {
   const frozen = game.phase === "claimed";
-  const yourLines = countCompletedLines(marks(game.playerBoard, game.calledMask));
+  const markedMask = marks(game.playerBoard, game.calledMask);
+  const yourLines = countCompletedLines(markedMask);
   const lastCall = game.calls.length > 0 ? game.calls[game.calls.length - 1] : null;
 
   const calledOrder = new Map<number, number>();
@@ -198,32 +198,38 @@ function PracticePlay({
   return (
     <div className="room-grid">
       <section className="panel">
-        <p className="panel-label">your board, {yourLines} of 5 lines</p>
+        <p className="panel-label">your board</p>
 
         <p className={`turn-strip ${!frozen && game.playerTurn ? "turn-strip--you" : ""}`} role="status">
           <span className="turn-dot" aria-hidden />
           {turnLabel}
         </p>
 
-        <div className="card-grid">
-          {game.playerBoard.map((n, i) => {
-            const order = calledOrder.get(n);
-            const marked = order !== undefined;
-            const disabled = frozen || !game.playerTurn || marked;
-            return (
-              <button
-                type="button"
-                key={i}
-                className={`cell board-cell ${marked ? "cell--marked" : ""} ${n === lastCall ? "cell--latest" : ""}`}
-                onClick={() => onChange(callNumber(game, n))}
-                disabled={disabled}
-                aria-label={marked ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
-              >
-                <span className="cell-num">{n}</span>
-                {marked && <span className="cell-order">{order}</span>}
-              </button>
-            );
-          })}
+        <div className="board-flex">
+          <div className="board-wrap">
+            <div className="card-grid">
+              {game.playerBoard.map((n, i) => {
+                const order = calledOrder.get(n);
+                const marked = order !== undefined;
+                const disabled = frozen || !game.playerTurn || marked;
+                return (
+                  <button
+                    type="button"
+                    key={i}
+                    className={`cell board-cell ${marked ? "cell--marked" : ""} ${n === lastCall ? "cell--latest" : ""}`}
+                    onClick={() => onChange(callNumber(game, n))}
+                    disabled={disabled}
+                    aria-label={marked ? `${n}, called ${addOrdinal(order)}` : `call ${n}`}
+                  >
+                    <span className="cell-num">{n}</span>
+                    {marked && <span className="cell-order">{order}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <LineStrikes lineIndexes={completedLineIndexes(markedMask)} />
+          </div>
+          <BingoMeter lines={yourLines} />
         </div>
 
         <div className="claim-row">
@@ -238,7 +244,7 @@ function PracticePlay({
           ) : (
             <button
               type="button"
-              className="btn btn--win btn--block"
+              className={`btn ${yourLines >= 5 ? "btn--win" : "btn--ghost"} btn--block`}
               onClick={() => onChange(claim(game, "you"))}
             >
               <TrophyIcon size={14} /> claim bingo
@@ -344,15 +350,18 @@ function resultDetail(game: PracticeState): string {
 
 function PracticeBoard({ board, calledMask }: { board: number[]; calledMask: number }) {
   return (
-    <div className="card-grid">
-      {board.map((n, i) => {
-        const marked = (calledMask & (1 << (n - 1))) !== 0;
-        return (
-          <div key={i} className={`cell ${marked ? "cell--marked" : ""}`}>
-            <span className="cell-num">{n}</span>
-          </div>
-        );
-      })}
+    <div className="board-wrap">
+      <div className="card-grid">
+        {board.map((n, i) => {
+          const marked = (calledMask & (1 << (n - 1))) !== 0;
+          return (
+            <div key={i} className={`cell ${marked ? "cell--marked" : ""}`}>
+              <span className="cell-num">{n}</span>
+            </div>
+          );
+        })}
+      </div>
+      <LineStrikes lineIndexes={completedLineIndexes(marks(board, calledMask))} />
     </div>
   );
 }
