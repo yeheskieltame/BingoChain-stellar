@@ -7,6 +7,7 @@ import {
   claim,
   newPractice,
   settle,
+  shouldAutoClaim,
   type PracticeState,
 } from "./practice";
 
@@ -198,6 +199,38 @@ describe("claim", () => {
   it("returns the same state outside the playing phase", () => {
     const s = claim(newPractice(identity), "you");
     expect(claim(s, "bot")).toBe(s);
+  });
+});
+
+describe("shouldAutoClaim", () => {
+  // Identity player board with 1..20 called: four lines, one call short.
+  const twentyCalled: PracticeState = {
+    phase: "playing",
+    playerBoard: identity,
+    botBoard: reversed,
+    calledMask: maskOf(Array.from({ length: 20 }, (_, i) => i + 1)),
+    calls: Array.from({ length: 20 }, (_, i) => i + 1),
+    playerTurn: true,
+    claimer: null,
+    winner: null,
+  };
+
+  it("arms the moment a call completes the player's fifth line", () => {
+    expect(shouldAutoClaim(twentyCalled)).toBe(false);
+    // Calling 21 completes column 0 and the anti diagonal: six lines.
+    const bingo = callNumber(twentyCalled, 21);
+    expect(shouldAutoClaim(bingo)).toBe(true);
+    // The UI path then claims for the player with no button press.
+    const claimed = claim(bingo, "you");
+    expect(claimed.phase).toBe("claimed");
+    expect(claimed.claimer).toBe("you");
+    expect(shouldAutoClaim(claimed)).toBe(false);
+  });
+
+  it("stays quiet on a fresh game and after a freeze", () => {
+    expect(shouldAutoClaim(newPractice(identity))).toBe(false);
+    const frozen = claim(callNumber(newPractice(identity), 1), "you");
+    expect(shouldAutoClaim(frozen)).toBe(false);
   });
 });
 

@@ -139,6 +139,14 @@ export function claim(s: PracticeState, who: "you" | "bot"): PracticeState {
   return { ...s, phase: "claimed", claimer: who };
 }
 
+/** True the moment the player's board holds bingo while play is live: the
+ * point where the UI should claim for them. The fifth line fixes their
+ * bingo index, and an opponent without bingo can only land a later one, so
+ * claiming immediately never loses. */
+export function shouldAutoClaim(s: PracticeState): boolean {
+  return s.phase === "playing" && countCompletedLines(marks(s.playerBoard, s.calledMask)) >= BINGO_LINES;
+}
+
 /** Replay the frozen call sequence against both boards, exactly like the
  * contract's settle: the earliest fifth line wins, equal indexes tie, a
  * board that never reached five lines loses to any that did (so a false

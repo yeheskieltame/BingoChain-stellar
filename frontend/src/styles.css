@@ -648,6 +648,23 @@ button { font-family: inherit; }
 
 .claim-row { margin-top: 16px; }
 
+/* stands in for the claim button while auto-claim handles a fresh bingo;
+   button-height so the row never jumps */
+.claim-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  margin: 0;
+  padding: 0 12px;
+  border-radius: var(--r);
+  border: 1px solid rgba(213, 170, 82, 0.45);
+  background: var(--brass-dim);
+  color: var(--brass);
+  font-size: 13.5px;
+  text-align: center;
+}
+
 /* one board with its strike overlay, the letter meter on the rail */
 .board-flex { display: flex; gap: 14px; align-items: stretch; }
 .board-wrap { position: relative; width: 100%; max-width: 430px; }

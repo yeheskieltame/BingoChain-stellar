@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Arena } from "bingo-client";
 import { BingoMeter, LineStrikes } from "./BingoMeter";
 import BoardSetup from "./BoardSetup";
@@ -319,15 +319,11 @@ function PlayRoom({
     });
   }
 
-  function claimBingo() {
+  /** The claim transaction itself, shared by auto-claim at bingo and the
+   * armed manual button. No confirm here: with five lines on the board the
+   * claim is always optimal, the bingo index is already fixed. */
+  function runClaim() {
     if (!address || claimBusy) return;
-    const confirmed = window.confirm(
-      "Claim bingo now? Claiming ends the calling phase for everyone and opens the reveal. " +
-        "The claim itself proves nothing: settlement replays the recorded calls against every " +
-        "revealed board, the earliest fifth line wins, and if nobody reached five, the most " +
-        "completed lines take the pot."
-    );
-    if (!confirmed) return;
     void claimTx.run(async (report) => {
       report("building");
       const client = arenaClient(address);
@@ -340,6 +336,35 @@ function PlayRoom({
       return hash;
     });
   }
+
+  /** The strategic early claim, before bingo. This one keeps the confirm:
+   * it freezes the round for everyone on a board that has not won yet. */
+  function claimEarly() {
+    if (!address || claimBusy) return;
+    const confirmed = window.confirm(
+      "Claim bingo now? Claiming ends the calling phase for everyone and opens the reveal. " +
+        "The claim itself proves nothing: settlement replays the recorded calls against every " +
+        "revealed board, the earliest fifth line wins, and if nobody reached five, the most " +
+        "completed lines take the pot."
+    );
+    if (!confirmed) return;
+    runClaim();
+  }
+
+  // Auto-claim: the fifth line fixes this board's bingo index, and an
+  // opponent without bingo can only land a later one, so claiming now never
+  // loses. Fires at most once per detection; a Freighter decline or an
+  // error falls back to the armed manual button instead of looping. Waits
+  // out any in-flight call first, then re-checks it is still valid.
+  const autoClaimed = useRef(false);
+  useEffect(() => {
+    if (autoClaimed.current) return;
+    if (arena.state.tag !== "Playing" || !isPlayer || myLines < 5) return;
+    if (callBusy || claimTx.state.phase !== "idle") return;
+    autoClaimed.current = true;
+    runClaim();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arena.state.tag, isPlayer, myLines, callBusy, claimTx.state.phase]);
 
   // Committed means the table is full and the opening call is live for
   // whoever holds the turn, so the label must not read as a dead wait.
@@ -423,14 +448,26 @@ function PlayRoom({
 
         {arena.state.tag === "Playing" && isPlayer && (
           <div className="claim-row">
-            <button
-              type="button"
-              className={`btn ${myLines >= 5 ? "btn--win" : "btn--ghost"} btn--block`}
-              onClick={claimBingo}
-              disabled={claimBusy}
-            >
-              <TrophyIcon size={14} /> {claimBusy ? "claiming" : "claim bingo"}
-            </button>
+            {myLines >= 5 ? (
+              claimTx.state.phase === "success" ? null : claimBusy || !autoClaimed.current ? (
+                <p className="claim-note" role="status">
+                  Bingo reached. Approve the claim in your wallet.
+                </p>
+              ) : (
+                <button type="button" className="btn btn--win btn--block" onClick={runClaim}>
+                  <TrophyIcon size={14} /> claim bingo
+                </button>
+              )
+            ) : (
+              <button
+                type="button"
+                className="btn btn--ghost btn--block"
+                onClick={claimEarly}
+                disabled={claimBusy}
+              >
+                <TrophyIcon size={14} /> {claimBusy ? "claiming" : "claim bingo"}
+              </button>
+            )}
             <TxStatus state={claimTx.state} onRetry={claimTx.reset} />
           </div>
         )}

@@ -7,6 +7,7 @@ import {
   claim,
   newPractice,
   settle,
+  shouldAutoClaim,
   type PracticePhase,
   type PracticeState,
 } from "../lib/practice";
@@ -22,6 +23,8 @@ interface PracticeRoomProps {
 }
 
 const BOT_DELAY_MS = 900;
+// Shorter than the bot's pause, so a fresh bingo claims before the next move.
+const AUTO_CLAIM_DELAY_MS = 650;
 
 // One hint per phase: what is happening at this table now, and what the real
 // game does on chain at the same moment.
@@ -69,6 +72,17 @@ export default function PracticeRoom({ onBack }: PracticeRoomProps) {
   useEffect(() => {
     if (!game || game.phase !== "playing" || game.playerTurn) return;
     const timer = setTimeout(() => setGame((g) => (g ? botMove(g) : g)), BOT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [game]);
+
+  // Auto-claim on bingo, after a beat so the strike and the fifth letter
+  // land first. The bot already claims its own bingo; this is the mirror.
+  useEffect(() => {
+    if (!game || !shouldAutoClaim(game)) return;
+    const timer = setTimeout(
+      () => setGame((g) => (g && shouldAutoClaim(g) ? claim(g, "you") : g)),
+      AUTO_CLAIM_DELAY_MS
+    );
     return () => clearTimeout(timer);
   }, [game]);
 
@@ -241,10 +255,14 @@ function PracticePlay({
             >
               <TrophyIcon size={14} /> settle the table
             </button>
+          ) : yourLines >= 5 ? (
+            <p className="claim-note" role="status">
+              Bingo. The claim fires on its own.
+            </p>
           ) : (
             <button
               type="button"
-              className={`btn ${yourLines >= 5 ? "btn--win" : "btn--ghost"} btn--block`}
+              className="btn btn--ghost btn--block"
               onClick={() => onChange(claim(game, "you"))}
             >
               <TrophyIcon size={14} /> claim bingo
