@@ -39,8 +39,8 @@ const computeZoom = (f: number) => {
 // Lacquer edge vignette that pulses while the meter fills toward the win.
 const EdgePulse: React.FC = () => {
   const f = useCurrentFrame();
-  const inWindow = f >= 485 && f <= s3.bingoAt + 20;
-  const pulse = inWindow ? interpolate(Math.sin((f - 485) / 3.5), [-1, 1], [0.15, 0.55]) : 0;
+  const inWindow = f >= s3.riserAt && f <= s3.bingoAt + 20;
+  const pulse = inWindow ? interpolate(Math.sin((f - s3.riserAt) / 3.5), [-1, 1], [0.15, 0.55]) : 0;
   return (
     <AbsoluteFill
       style={{ pointerEvents: "none", boxShadow: `inset 0 0 160px 30px ${palette.lacquer}`, opacity: pulse }}
@@ -79,13 +79,13 @@ export const Scene3: React.FC = () => {
         <EdgePulse />
       </ComicFrame>
 
-      {/* Onomatopoeia land over the whole frame. SLASH is a brief flash; the
-          BINGO! card holds through the win and the settle. */}
-      <Sequence from={s3.slashAt} durationInFrames={52}>
-        <Onomatopoeia word="SLASH" tilt={-6} size={280} x={56} y={40} />
+      {/* Onomatopoeia land over the whole frame. Both are brief comic flashes
+          over their freeze; BINGO! punches out so the claim and settle show. */}
+      <Sequence from={s3.slashAt} durationInFrames={46}>
+        <Onomatopoeia word="SLASH" tilt={-6} size={280} x={50} y={34} />
       </Sequence>
-      <Sequence from={s3.bingoAt} durationInFrames={720 - s3.bingoAt}>
-        <Onomatopoeia word="BINGO!" tilt={-5} size={340} x={50} y={42} />
+      <Sequence from={s3.bingoAt} durationInFrames={s3.bingoHold}>
+        <Onomatopoeia word="BINGO!" tilt={-5} size={340} x={50} y={44} />
       </Sequence>
     </AbsoluteFill>
   );

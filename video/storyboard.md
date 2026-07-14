@@ -33,25 +33,30 @@ You seal a secret board in a cryptographic envelope. The contract locks every st
 And when the round ends, it replays every single call to crown the winner.
 Cheating does not lose the argument here. It loses the pot."
 
-## Scene 3, Gameplay demo (0:38 to 1:25)
+## Scene 3, Gameplay demo (0:38 to 1:30)
 
-Visual: real screen recording of the live app inside a comic panel frame with brass
-corners. Beats, with speed ramps and punch-in zooms:
-1. Lobby, then the practice table opens. (2 s)
-2. Board setup, shuffle twice, commit. (4 s)
-3. First calls: tap a cell, dauber stamps it, order badge lands. Bot answers. (8 s)
-4. First completed line: SVG strike draws, onomatopoeia card "SLASH" flashes. (4 s)
-5. Meter fills B, BI, BIN, each letter a bass hit, heartbeat quickens. (10 s)
-6. BING at four lines, screen edge vignette pulses lacquer. (5 s)
-7. The fifth line lands: strikes blaze, meter reads BINGO, onomatopoeia "BINGO!". (4 s)
-8. Auto-claim fires, then the settled screen: "You take the pot." Halftone confetti. (8 s)
-SFX: wet dauber thocks per call, whoosh per zoom, riser from beat 5, win fanfare at 8.
+Visual: real screen recording of the live app on the STAKED flow, a genuine three
+player game on Stellar testnet, hero point of view inside a comic panel frame with
+brass corners. The two rivals are real funded accounts driven headlessly; their joins,
+calls, and reveals arrive on the hero's screen through the live event stream. Beats,
+with speed ramps and punch-in zooms:
+1. Lobby, create a table: stake one XLM, three seats. (4 s)
+2. Board setup, shuffle, commit the sealed board, the wallet signs. (5 s)
+3. Rival one joins, rival two joins, the table seals. Real names, real stakes. (5 s)
+4. Turn calls: tap a cell, dauber stamps, rivals answer in real time. (8 s)
+5. First completed line: strike draws, onomatopoeia card "SLASH". (4 s)
+6. Meter fills B, BI, BIN, BING, bass hit per letter, heartbeat quickens. (10 s)
+7. The fifth line lands: strikes blaze, meter reads BINGO, card "BINGO!". (4 s)
+8. Auto-claim fires and signs, rivals reveal, settle, "You take the pot",
+   then the withdraw: real XLM lands in the wallet. (10 s)
+SFX: wet dauber thocks per call, whoosh per zoom, riser from beat 6, win fanfare at 8.
 VO, sparse, letting the game breathe:
 "Arrange your twenty five numbers. Then play.
+Two rivals take their seats. Real stakes on the line.
 Every call is a move. Every line, a blade getting closer.
 Three lines. Four.
-... Bingo. The claim fires itself. The contract checks the tape.
-And the pot is yours."
+... Bingo. The claim fires itself.
+The contract checks the tape. And the pot is yours."
 
 ## Scene 4, Key takeaways (1:25 to 1:40)
 
@@ -105,9 +110,22 @@ SFX (Higgsfield seed_audio, mono cues, short):
   low piano sting.
 Music beds: tense percussive noir heist loop (about 90 s), triumphant brass tail (about 15 s).
 
-Gameplay capture: Playwright, chromium 1920x1080, records the practice flow to a win.
-The runner replays until the player wins, then keeps the winning take. Segments listed in
-scene 3 get cut in Remotion from one continuous take using timestamps logged by the runner.
+Gameplay capture: Playwright, chromium 1920x1080, records the hero point of view of a
+REAL three player staked game on testnet. The recorder shims the Freighter message
+protocol in the page so the hero signs with a throwaway funded key (the app itself is
+untouched); two rival accounts play headlessly through the contract bindings, biased to
+lose. The runner replays until the hero wins, then keeps the winning take. Segments
+listed in scene 3 get cut in Remotion from one continuous take using timestamps logged
+by the runner.
 
-VO renders: one wav per line group, 24 kHz, normalized, filenames vo-s1.wav .. vo-s6.wav.
+VO renders: one wav PER CAPTION CHUNK, 24 kHz, filenames vo-s1-01.wav and so on, with
+video/assets/audio/vo/captions.json mapping each file to its exact on-screen text.
 Remotion sequences are timed to the measured durations of these files.
+
+Narration captions: every spoken chunk appears on screen as a COMIC CAPTION BOX, a
+paper (bone) rectangular box with ink text in the mono or serif face, a hard ink
+drop shadow, slight rotation (1 to 3 degrees, alternating), positioned inside the
+imagery (top left, top right, lower third corners, varied per beat, never centered
+bottom like a subtitle). Boxes pop in with a small stamp spring synced to the start
+of their audio chunk and hold until the chunk ends plus a beat. On gameplay scenes
+they sit on the felt margin around the comic frame, never covering the board.

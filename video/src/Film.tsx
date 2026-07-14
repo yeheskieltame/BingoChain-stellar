@@ -1,5 +1,6 @@
 import { AbsoluteFill, Sequence } from "remotion";
 import { Mix } from "./audio/Mix";
+import { Captions } from "./components/Captions";
 import { Scene1 } from "./scenes/Scene1";
 import { Scene2 } from "./scenes/Scene2";
 import { Scene3 } from "./scenes/Scene3";
@@ -28,6 +29,8 @@ export const Film: React.FC = () => (
         </Sequence>
       );
     })}
+    {/* Comic caption boxes ride above every scene, on the felt margin. */}
+    <Captions />
     <Mix />
   </AbsoluteFill>
 );

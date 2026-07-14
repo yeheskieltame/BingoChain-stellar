@@ -32,12 +32,14 @@ echo "copying font"
 cp -f "$root/../frontend/public/fonts/fraunces-latin-var.woff2" "$pub/fonts/"
 
 # Freeze frames: exact source-seconds that match the scene-3 segment boundaries
-# in src/timing.ts (strike hold, bingo hold, settled hold). Extract at the seek
-# time so a still <Img> reads continuous with the OffthreadVideo it replaces.
+# in src/timing.ts (strike hold, bingo hold, final withdrawn hold). Extract at
+# the seek time so a still <Img> reads continuous with the OffthreadVideo it
+# replaces. Times are real source seconds (the take is 25 fps; ffmpeg -ss and
+# Remotion trimBefore both address real time).
 echo "extracting freeze stills"
 take="$assets/gameplay/take.mp4"
-ffmpeg -y -loglevel error -ss 13.393 -i "$take" -frames:v 1 "$pub/gameplay/frame-strike.png"
-ffmpeg -y -loglevel error -ss 20.400 -i "$take" -frames:v 1 "$pub/gameplay/frame-bingo.png"
-ffmpeg -y -loglevel error -ss 21.526 -i "$take" -frames:v 1 "$pub/gameplay/frame-settled.png"
+ffmpeg -y -loglevel error -ss 75.72 -i "$take" -frames:v 1 "$pub/gameplay/frame-strike.png"
+ffmpeg -y -loglevel error -ss 152.02 -i "$take" -frames:v 1 "$pub/gameplay/frame-bingo.png"
+ffmpeg -y -loglevel error -ss 184.40 -i "$take" -frames:v 1 "$pub/gameplay/frame-withdrawn.png"
 
 echo "done"
