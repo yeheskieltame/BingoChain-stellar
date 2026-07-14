@@ -58,7 +58,8 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
       if (cancelled) return;
       const next: Record<string, boolean> = {};
       arena.players.forEach((p, i) => {
-        next[p] = boards[i] !== undefined;
+        // The generated bindings decode an absent Option as null, not undefined.
+        next[p] = boards[i] != null;
       });
       setRevealStatus(next);
     });
