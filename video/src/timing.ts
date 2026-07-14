@@ -20,7 +20,7 @@ type SceneDef = { id: string; duration: number };
 const sceneDefs: SceneDef[] = [
   { id: "s1", duration: 560 }, // 18.7s  the problem
   { id: "s2", duration: 812 }, // 27.1s  the solution
-  { id: "s3", duration: 1663 }, // 55.4s gameplay (staked take)
+  { id: "s3", duration: 1886 }, // 62.9s gameplay (staked take + showdown)
   { id: "s4", duration: 469 }, // 15.6s  takeaways
   { id: "s5", duration: 505 }, // 16.8s  innovation
   { id: "s6", duration: 492 }, // 16.4s  cta (last ~30f silent)
@@ -42,7 +42,7 @@ export const sceneById = (id: string): Scene => {
   return s;
 };
 
-export const TOTAL_FRAMES = scenes[scenes.length - 1].end; // 4501 = 2:30
+export const TOTAL_FRAMES = scenes[scenes.length - 1].end; // 4724 = 2:37.5
 
 // ---- Voice over (one wav per caption chunk) -----------------------------
 // localStart is scene-local; global start is derived. durFrames = measured wav
@@ -61,12 +61,13 @@ const voDefs: VoDef[] = [
   { file: "vo/vo-s2-04.wav", scene: "s2", localStart: 465, durFrames: 142 },
   { file: "vo/vo-s2-05.wav", scene: "s2", localStart: 619, durFrames: 127 },
 
-  { file: "vo/vo-s3-01.wav", scene: "s3", localStart: 130, durFrames: 104 },
-  { file: "vo/vo-s3-02.wav", scene: "s3", localStart: 280, durFrames: 125 },
-  { file: "vo/vo-s3-03.wav", scene: "s3", localStart: 470, durFrames: 129 },
-  { file: "vo/vo-s3-04.wav", scene: "s3", localStart: 850, durFrames: 68 },
-  { file: "vo/vo-s3-05.wav", scene: "s3", localStart: 1150, durFrames: 88 },
-  { file: "vo/vo-s3-06.wav", scene: "s3", localStart: 1410, durFrames: 113 },
+  { file: "vo/vo-s3-01.wav", scene: "s3", localStart: 140, durFrames: 104 },
+  { file: "vo/vo-s3-02.wav", scene: "s3", localStart: 285, durFrames: 125 },
+  { file: "vo/vo-s3-03.wav", scene: "s3", localStart: 445, durFrames: 129 },
+  { file: "vo/vo-s3-04.wav", scene: "s3", localStart: 880, durFrames: 68 },
+  { file: "vo/vo-s3-05.wav", scene: "s3", localStart: 1160, durFrames: 88 },
+  { file: "vo/vo-s3-06.wav", scene: "s3", localStart: 1320, durFrames: 113 },
+  { file: "vo/vo-s3-07.wav", scene: "s3", localStart: 1460, durFrames: 193 },
 
   { file: "vo/vo-s4-01.wav", scene: "s4", localStart: 15, durFrames: 99 },
   { file: "vo/vo-s4-02.wav", scene: "s4", localStart: 126, durFrames: 118 },
@@ -145,6 +146,9 @@ const capDefs: CapDef[] = [
   { id: "vo-s3-04", text: "Three lines. Four.", variant: "serif", rotate: -2, pos: { top: 70, left: 96 }, maxWidth: 360 },
   { id: "vo-s3-05", text: "BINGO. The claim fires itself.", variant: "serif", rotate: 2, pos: { top: 70, right: 96 }, maxWidth: 400 },
   { id: "vo-s3-06", text: "The contract checks the tape. The pot is yours.", variant: "mono", rotate: -2, pos: { bottom: 130, left: 96 }, maxWidth: 440 },
+  // Showdown beat: boards fill the center-left band, so the box sits on the
+  // open felt to the right, clear of every board and the WINNER badge.
+  { id: "vo-s3-07", text: "Every board opens on the table. Nothing to hide.", variant: "mono", rotate: 2, pos: { bottom: 150, right: 110 }, maxWidth: 420 },
 
   // Scene 4: three takeaway cards fill the center band; boxes ride the top strip.
   { id: "vo-s4-01", text: "Sealed boards keep every strategy secret.", variant: "mono", rotate: 2, pos: { top: 60, left: 96 } },
@@ -182,49 +186,56 @@ export const captions: Caption[] = capDefs.map((c) => {
 });
 
 // ---- Scene 3 time remap -------------------------------------------------
-// Built from cues.json (a real 3 player staked game, 25 fps take). Video
-// segments name a source start (seconds) and a playback speed; their output
-// length is (dur/30 * speed) of source. Still segments hold a pre-extracted
-// freeze. Cumulative output equals scene 3's duration (1663). Waiting stretches
-// are ramped 1.5x..1.9x; the strike and the bingo run in 0.5x slow motion, each
-// landing on a freeze under its onomatopoeia card.
+// Built from cues.json (a real 3 player staked game, arena 15, 25 fps take).
+// Video segments name a source start (seconds) and a playback speed; their
+// output length is (dur/30 * speed) of source. Still segments hold a
+// pre-extracted freeze. Cumulative output equals scene 3's duration (1886).
+// Waiting stretches are ramped 1.4x..2x; the strike and the bingo run in 0.5x
+// slow motion, each landing on a freeze under its onomatopoeia card. The
+// showdown (every board open, WINNER badge) holds at 1x for ~7s.
 export type Seg =
   | { kind: "video"; srcStart: number; speed: number; dur: number; note: string }
   | { kind: "still"; still: string; dur: number; note: string };
 
 export const s3Segments: Seg[] = [
-  { kind: "video", srcStart: 0.184, speed: 1.5, dur: 112, note: "lobby -> create table (stake 1 XLM, 3 seats)" },
-  { kind: "video", srcStart: 6.802, speed: 1.9, dur: 150, note: "board setup, shuffle, commit sealed board" },
-  { kind: "video", srcStart: 16.7, speed: 1.8, dur: 186, note: "rival 1 joins, rival 2 joins, table seals" },
-  { kind: "video", srcStart: 30.777, speed: 1.8, dur: 120, note: "turn calls, dauber stamps" },
-  { kind: "video", srcStart: 68.0, speed: 1.5, dur: 90, note: "calls building toward the first line" },
-  { kind: "video", srcStart: 74.9, speed: 0.5, dur: 60, note: "first strike, slow motion" },
+  { kind: "video", srcStart: 0.207, speed: 1.85, dur: 132, note: "lobby -> create table (stake 1 XLM, 3 seats)" },
+  { kind: "video", srcStart: 8.854, speed: 1.9, dur: 140, note: "board setup, shuffle, commit sealed board" },
+  { kind: "video", srcStart: 17.85, speed: 1.95, dur: 160, note: "rival 1 joins, rival 2 joins, table seals" },
+  { kind: "video", srcStart: 29.641, speed: 1.8, dur: 110, note: "turn calls, dauber stamps" },
+  { kind: "video", srcStart: 74.9, speed: 1.7, dur: 70, note: "calls building toward the first line" },
+  { kind: "video", srcStart: 78.867, speed: 0.5, dur: 60, note: "first strike, slow motion" },
   { kind: "still", still: "gameplay/frame-strike.png", dur: 18, note: "freeze, SLASH lands" },
-  { kind: "video", srcStart: 110.5, speed: 1.0, dur: 330, note: "meter fills B BI BIN BING" },
-  { kind: "video", srcStart: 151.0, speed: 0.5, dur: 66, note: "bingo, slow motion" },
+  { kind: "video", srcStart: 121.9, speed: 1.0, dur: 80, note: "meter-2 and meter-3 land together" },
+  { kind: "video", srcStart: 124.57, speed: 2.0, dur: 111, note: "waiting ramp through the calls" },
+  { kind: "video", srcStart: 131.97, speed: 1.0, dur: 50, note: "meter-4 lands, BING" },
+  { kind: "video", srcStart: 133.64, speed: 2.0, dur: 134, note: "ramp to the bingo approach" },
+  { kind: "video", srcStart: 142.57, speed: 0.5, dur: 66, note: "bingo, slow motion" },
   { kind: "still", still: "gameplay/frame-bingo.png", dur: 24, note: "freeze, BINGO! lands" },
-  { kind: "video", srcStart: 152.2, speed: 1.7, dur: 165, note: "auto-claim, claim signs, hero reveals" },
-  { kind: "video", srcStart: 169.8, speed: 1.4, dur: 84, note: "rivals reveal, hero clicks settle" },
-  { kind: "video", srcStart: 174.8, speed: 1.0, dur: 72, note: "you take the pot, table settled" },
-  { kind: "video", srcStart: 177.6, speed: 1.2, dur: 156, note: "withdraw, real XLM lands in the wallet" },
+  { kind: "video", srcStart: 143.9, speed: 1.9, dur: 145, note: "auto-claim, claim signs, hero reveals" },
+  { kind: "video", srcStart: 162.5, speed: 1.4, dur: 84, note: "rivals reveal, hero clicks settle" },
+  { kind: "video", srcStart: 171.5, speed: 1.0, dur: 72, note: "you take the pot, table settled" },
+  { kind: "video", srcStart: 174.244, speed: 1.0, dur: 210, note: "showdown: every board opens, WINNER badge" },
+  { kind: "video", srcStart: 181.35, speed: 1.4, dur: 190, note: "withdraw, real XLM lands in the wallet" },
   { kind: "still", still: "gameplay/frame-withdrawn.png", dur: 30, note: "final hold on the funded wallet" },
 ];
 
 // Scene-3-local frames for overlays and accents, derived from the segment
 // starts above. Kept as named constants so scenes and mix stay in sync.
 export const s3 = {
-  slashAt: 718, // SLASH freeze start (end of the strike slow-mo)
-  bingoAt: 1132, // BINGO freeze start (end of the bingo slow-mo)
+  slashAt: 672, // SLASH freeze start (end of the strike slow-mo)
+  bingoAt: 1131, // BINGO freeze start (end of the bingo slow-mo)
   bingoHold: 60, // frames the BINGO! card holds before it punches out
-  punchFirstCall: 460, // inside the turn-calls run
-  punchMeter4: 1062, // meter-4 lands on screen
-  punchSettled: 1462, // settled ("you take the pot")
-  bassLetters: [776, 923, 1062], // meter-2, meter-3, meter-4 on screen
-  riserAt: 920, // riser building through the meter into the win
-  fanfareAt: 1462, // settled
-  heartbeats: [700, 900], // tension under the meter run
-  thocks: [470, 510, 555, 600, 640], // dauber calls we accent (5)
-  whooshes: [460, 1062, 1462], // per punch-in zoom
+  punchFirstCall: 445, // inside the turn-calls run
+  punchMeter4: 891, // meter-4 lands on screen
+  punchSettled: 1395, // settled ("you take the pot")
+  showdownAt: 1456, // showdown segment start (slow punch-in begins)
+  showdownEnd: 1666, // showdown segment end
+  bassLetters: [713, 725, 891], // meter-2, meter-3 (a beat later), meter-4
+  riserAt: 860, // riser building through the meter into the win
+  fanfareAt: 1395, // settled; the tail breathes over the showdown
+  heartbeats: [700, 890], // tension under the meter run
+  thocks: [445, 480, 515, 555, 590], // dauber calls we accent (5)
+  whooshes: [445, 891, 1395], // per punch-in zoom
 } as const;
 
 // ---- SFX schedule (global frames) --------------------------------------
@@ -276,6 +287,8 @@ export const sfxCues: Sfx[] = [
   { file: "sfx/sfx-slam.wav", at: S3 + s3.slashAt, volume: 0.5 },
   { file: "sfx/sfx-slam.wav", at: S3 + s3.bingoAt, volume: 0.55 },
   { file: "sfx/sfx-fanfare.wav", at: S3 + s3.fanfareAt, volume: 0.6 },
+  // Soft stamp as the showdown opens; the fanfare tail breathes under it.
+  { file: "sfx/sfx-stamp.wav", at: S3 + s3.showdownAt, volume: 0.35 },
 
   // Scene 4: three escalating slams under the takeaway cards.
   { file: "sfx/sfx-slam.wav", at: S4 + s4Cards[0], volume: 0.4 },

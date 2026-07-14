@@ -15,23 +15,31 @@ import { FPS, palette, s3, s3Segments } from "../timing";
 const TAKE = "gameplay/take.mp4";
 const cover: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover" };
 
-// Punch-in zoom toward the board on first-call, meter-4 and the settled screen.
+// Punch-in zoom toward the board on first-call and meter-4, plus a quick punch
+// on the settled screen that releases before the cut to the showdown.
 const zooms = [
-  { at: s3.punchFirstCall, ox: "42%", oy: "56%", last: false },
-  { at: s3.punchMeter4, ox: "50%", oy: "48%", last: false },
-  { at: s3.punchSettled, ox: "50%", oy: "50%", last: true },
+  { at: s3.punchFirstCall, ox: "42%", oy: "56%" },
+  { at: s3.punchMeter4, ox: "50%", oy: "48%" },
+  { at: s3.punchSettled, ox: "50%", oy: "50%" },
 ];
 
 const computeZoom = (f: number) => {
   let best = { scale: 1, ox: "50%", oy: "50%" };
   for (const z of zooms) {
-    const sc = z.last
-      ? interpolate(f, [z.at - 3, z.at + 7], [1, 1.15], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-      : interpolate(f, [z.at - 3, z.at + 7, z.at + 26, z.at + 40], [1, 1.15, 1.15, 1], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        });
+    const sc = interpolate(f, [z.at - 3, z.at + 7, z.at + 26, z.at + 40], [1, 1.15, 1.15, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
     if (sc > best.scale) best = { scale: sc, ox: z.ox, oy: z.oy };
+  }
+  // Showdown: a slow push toward the hero's open board and its WINNER badge,
+  // riding the whole beat; the hard cut to the withdraw releases it.
+  if (f >= s3.showdownAt && f < s3.showdownEnd) {
+    const sc = interpolate(f, [s3.showdownAt + 10, s3.showdownEnd], [1, 1.14], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+    if (sc > best.scale) best = { scale: sc, ox: "30%", oy: "72%" };
   }
   return best;
 };

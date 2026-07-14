@@ -38,8 +38,8 @@ cp -f "$root/../frontend/public/fonts/fraunces-latin-var.woff2" "$pub/fonts/"
 # Remotion trimBefore both address real time).
 echo "extracting freeze stills"
 take="$assets/gameplay/take.mp4"
-ffmpeg -y -loglevel error -ss 75.72 -i "$take" -frames:v 1 "$pub/gameplay/frame-strike.png"
-ffmpeg -y -loglevel error -ss 152.02 -i "$take" -frames:v 1 "$pub/gameplay/frame-bingo.png"
-ffmpeg -y -loglevel error -ss 184.40 -i "$take" -frames:v 1 "$pub/gameplay/frame-withdrawn.png"
+ffmpeg -y -loglevel error -ss 79.87 -i "$take" -frames:v 1 "$pub/gameplay/frame-strike.png"
+ffmpeg -y -loglevel error -ss 143.67 -i "$take" -frames:v 1 "$pub/gameplay/frame-bingo.png"
+ffmpeg -y -loglevel error -ss 190.20 -i "$take" -frames:v 1 "$pub/gameplay/frame-withdrawn.png"
 
 echo "done"
