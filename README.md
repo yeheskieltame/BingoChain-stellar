@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/yeheskieltame/BingoChain-stellar/actions/workflows/ci.yml/badge.svg)](https://github.com/yeheskieltame/BingoChain-stellar/actions/workflows/ci.yml)
 
+Live app: https://bingochain-stellar.vercel.app (try the free practice table at [/#/practice](https://bingochain-stellar.vercel.app/#/practice), no wallet needed)
+
 BingoChain Stellar is a two to six player bingo game that settles entirely on
 a Soroban smart contract on Stellar testnet. Every player arranges the same
 25 numbers on their own 5x5 board and seals it with a commitment before play
