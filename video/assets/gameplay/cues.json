@@ -1,0 +1,49 @@
+{
+  "cues": [
+    {
+      "label": "lobby-open",
+      "tMs": 209
+    },
+    {
+      "label": "practice-open",
+      "tMs": 3251
+    },
+    {
+      "label": "setup-done",
+      "tMs": 6319
+    },
+    {
+      "label": "first-call",
+      "tMs": 7741
+    },
+    {
+      "label": "first-strike",
+      "tMs": 12643
+    },
+    {
+      "label": "meter-2",
+      "tMs": 15509
+    },
+    {
+      "label": "meter-3",
+      "tMs": 18359
+    },
+    {
+      "label": "meter-4",
+      "tMs": 19785
+    },
+    {
+      "label": "bingo",
+      "tMs": 20092
+    },
+    {
+      "label": "auto-claim",
+      "tMs": 20093
+    },
+    {
+      "label": "settled",
+      "tMs": 21526
+    }
+  ],
+  "totalMs": 36526
+}
