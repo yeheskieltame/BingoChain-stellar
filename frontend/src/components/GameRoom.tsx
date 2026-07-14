@@ -3,10 +3,11 @@ import type { Arena } from "bingo-client";
 import { BingoMeter, LineStrikes } from "./BingoMeter";
 import BoardSetup from "./BoardSetup";
 import RevealPanel from "./RevealPanel";
+import { Showdown } from "./Showdown";
 import TxStatus from "./TxStatus";
 import { STATE_LABEL } from "./Lobby";
 import { ArrowLeftIcon, CheckIcon, TrophyIcon, UsersIcon } from "./Icons";
-import { completedLineIndexes, countCompletedLines, marks } from "../lib/board";
+import { completedLineIndexes, countCompletedLines, marks, resolveShowdown } from "../lib/board";
 import { arenaClient, signAndSubmit, simulationError, unwrapResult } from "../lib/contract";
 import { useArena } from "../hooks/useArena";
 import { useTx } from "../hooks/useTx";
@@ -41,11 +42,13 @@ function addOrdinal(n: number): string {
  */
 export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRoomProps) {
   const { arena, loading, error, myReveal, refresh } = useArena(arenaId, address);
-  const [revealStatus, setRevealStatus] = useState<Record<string, boolean>>({});
+  // Every seat's revealed board, kept whole for the showdown: null once
+  // fetched and absent, missing while still unfetched.
+  const [revealedBoards, setRevealedBoards] = useState<Record<string, number[] | null>>({});
 
-  // Per-player reveal status only matters once calling has stopped. Fetched
-  // fresh whenever the arena object changes: every event tick and every
-  // manual refresh produce a new arena reference, which reruns this.
+  // Per-player reveals only matter once calling has stopped. Fetched fresh
+  // whenever the arena object changes: every event tick and every manual
+  // refresh produce a new arena reference, which reruns this.
   useEffect(() => {
     if (!arena) return;
     if (arena.state.tag !== "Revealing" && arena.state.tag !== "Settled") return;
@@ -56,12 +59,13 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
       arena.players.map((p) => client.revealed_board_of({ arena_id: arena.id, player: p }).then((tx) => tx.result))
     ).then((boards) => {
       if (cancelled) return;
-      const next: Record<string, boolean> = {};
+      const next: Record<string, number[] | null> = {};
       arena.players.forEach((p, i) => {
         // The generated bindings decode an absent Option as null, not undefined.
-        next[p] = boards[i] != null;
+        const board = boards[i];
+        next[p] = board != null ? Array.from(board) : null;
       });
-      setRevealStatus(next);
+      setRevealedBoards(next);
     });
     return () => {
       cancelled = true;
@@ -96,6 +100,9 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
   }
 
   const isPlayer = !!address && arena.players.includes(address);
+  const revealStatus: Record<string, boolean> = Object.fromEntries(
+    arena.players.map((p) => [p, revealedBoards[p] != null])
+  );
   const allRevealed = arena.players.length > 0 && arena.players.every((p) => revealStatus[p]);
 
   return (
@@ -116,17 +123,20 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
       )}
 
       {arena.state.tag === "Revealing" && (
-        <div className="room-grid">
-          <RevealPanel
-            arena={arena}
-            address={address}
-            myReveal={myReveal}
-            revealed={!!address && !!revealStatus[address]}
-            allRevealed={allRevealed}
-            onChanged={handleChanged}
-          />
-          <PlayersPanel arena={arena} address={address} revealStatus={revealStatus} />
-        </div>
+        <>
+          <div className="room-grid">
+            <RevealPanel
+              arena={arena}
+              address={address}
+              myReveal={myReveal}
+              revealed={!!address && !!revealStatus[address]}
+              allRevealed={allRevealed}
+              onChanged={handleChanged}
+            />
+            <PlayersPanel arena={arena} address={address} revealStatus={revealStatus} />
+          </div>
+          <ShowdownPanel arena={arena} address={address} boards={revealedBoards} final={false} />
+        </>
       )}
 
       {(arena.state.tag === "Created" || arena.state.tag === "Committed") && (
@@ -134,13 +144,17 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
       )}
 
       {arena.state.tag === "Settled" && (
-        <div className="state">
-          <span className="state-art" aria-hidden />
-          <p className="state-title">Table settled</p>
-          <p className="state-msg">
-            The pot went to each winner's earnings balance. Winners withdraw from the earnings card above.
-          </p>
-        </div>
+        <>
+          <div className="state">
+            <span className="state-art" aria-hidden />
+            <p className="state-title">Table settled</p>
+            <p className="state-msg">
+              The pot went to each winner's earnings balance. Winners withdraw from the earnings card
+              above. Every revealed board is open below.
+            </p>
+          </div>
+          <ShowdownPanel arena={arena} address={address} boards={revealedBoards} final />
+        </>
       )}
 
       {arena.state.tag === "Cancelled" && (
@@ -517,6 +531,60 @@ function CallSheet({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * The showdown: every seat's revealed board face up, with the verdict
+ * mirrored from the contract's settle rule. During the reveal window it
+ * shows whatever is open so far without naming winners; at settlement the
+ * winner badges and forfeit wording land.
+ */
+function ShowdownPanel({
+  arena,
+  address,
+  boards,
+  final,
+}: {
+  arena: Arena;
+  address: string | null;
+  boards: Record<string, number[] | null>;
+  final: boolean;
+}) {
+  const anyRevealed = arena.players.some((p) => boards[p] != null);
+  if (!final && !anyRevealed) return null;
+
+  const calls = Array.from(arena.call_sequence);
+  const seatBoards = Object.fromEntries(arena.players.map((p) => [p, boards[p] ?? null]));
+  const results = resolveShowdown(seatBoards, calls, arena.called_mask);
+  const winners = arena.players.filter((p) => results[p].winner);
+  const pot = stroopsToXlm(arena.stake * BigInt(arena.players.length));
+
+  const potLine = !final
+    ? `${pot} XLM pot, verdict comes at settlement`
+    : winners.length > 1
+      ? `${pot} XLM pot, split ${winners.length} ways after the protocol fee`
+      : winners.length === 1
+        ? `${pot} XLM pot, the winner takes it after the protocol fee`
+        : `${pot} XLM pot, nobody revealed, the treasury takes it`;
+
+  return (
+    <section className="panel showdown-panel">
+      <p className="panel-label">showdown</p>
+      <p className="call-note">{potLine}</p>
+      <Showdown
+        seats={arena.players.map((p) => ({
+          key: p,
+          label: truncateAddress(p),
+          mono: true,
+          isYou: p === address,
+          board: seatBoards[p],
+        }))}
+        calls={calls}
+        calledMask={arena.called_mask}
+        final={final}
+      />
+    </section>
   );
 }
 

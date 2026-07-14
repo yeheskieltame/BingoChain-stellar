@@ -753,6 +753,57 @@ button { font-family: inherit; }
 .call-chip--live:not(:disabled):hover { transform: translateY(-2px); }
 .call-chip--live:disabled { cursor: not-allowed; }
 .call-chip--live:disabled:not(.call-chip--called) { filter: saturate(0.7) brightness(0.82); }
+
+/* ================================  SHOWDOWN  ============================= */
+
+.showdown-panel { margin-top: 18px; }
+.showdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.showdown-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--well);
+}
+.showdown-card--winner {
+  border-color: rgba(213, 170, 82, 0.55);
+  box-shadow: 0 0 0 1px rgba(213, 170, 82, 0.25);
+}
+.showdown-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--bone);
+}
+.badge--winner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: #241d0c;
+  background: linear-gradient(180deg, #e0ba69, var(--brass));
+  border-color: rgba(0, 0, 0, 0.35);
+  font-weight: 650;
+}
+.board-wrap--mini { max-width: none; }
+.card-grid--mini { gap: 3px; max-width: none; }
+.card-grid--mini .cell {
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 540;
+  box-shadow: none;
+}
+.card-grid--mini .cell--marked::after { border-width: 1.5px; inset: 10%; }
+.showdown-stat { margin: 0; font-size: 12.5px; color: var(--muted); }
+.showdown-stat--forfeit { color: var(--ember); }
 .call-chip--called { color: var(--dauber); }
 
 .board-setup-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }

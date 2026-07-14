@@ -12,6 +12,7 @@ import {
   type PracticeState,
 } from "../lib/practice";
 import { BingoMeter, LineStrikes } from "./BingoMeter";
+import { Showdown } from "./Showdown";
 import { ArrowLeftIcon, DiceIcon, SparkleIcon, TrophyIcon, UsersIcon, XIcon } from "./Icons";
 
 // The zero-risk front door: a full round against a bot, entirely in the
@@ -324,20 +325,21 @@ function PracticeResult({
         </div>
       </div>
 
-      <div className="room-grid">
-        <section className="panel">
-          <p className="panel-label">
-            your board, {countCompletedLines(marks(game.playerBoard, game.calledMask))} lines
-          </p>
-          <PracticeBoard board={game.playerBoard} calledMask={game.calledMask} />
-        </section>
-        <section className="panel">
-          <p className="panel-label">
-            the bot's board, revealed, {countCompletedLines(marks(game.botBoard, game.calledMask))} lines
-          </p>
-          <PracticeBoard board={game.botBoard} calledMask={game.calledMask} />
-        </section>
-      </div>
+      <section className="panel showdown-panel">
+        <p className="panel-label">showdown</p>
+        <p className="call-note">
+          Both boards face up, the bot's included. On the real table this is where the pot splits.
+        </p>
+        <Showdown
+          seats={[
+            { key: "you", label: "you", isYou: true, board: game.playerBoard },
+            { key: "bot", label: "the bot", board: game.botBoard },
+          ]}
+          calls={game.calls}
+          calledMask={game.calledMask}
+          final
+        />
+      </section>
     </>
   );
 }
@@ -366,20 +368,3 @@ function resultDetail(game: PracticeState): string {
     : `Nobody reached five lines, but the bot held ${botLines} to your ${yourLines}.`;
 }
 
-function PracticeBoard({ board, calledMask }: { board: number[]; calledMask: number }) {
-  return (
-    <div className="board-wrap">
-      <div className="card-grid">
-        {board.map((n, i) => {
-          const marked = (calledMask & (1 << (n - 1))) !== 0;
-          return (
-            <div key={i} className={`cell ${marked ? "cell--marked" : ""}`}>
-              <span className="cell-num">{n}</span>
-            </div>
-          );
-        })}
-      </div>
-      <LineStrikes lineIndexes={completedLineIndexes(marks(board, calledMask))} />
-    </div>
-  );
-}

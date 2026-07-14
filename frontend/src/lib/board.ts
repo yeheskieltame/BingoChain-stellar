@@ -80,3 +80,55 @@ export function bingoIndex(board: number[], calls: number[]): number | null {
   }
   return null;
 }
+
+/** One seat's verdict at the showdown. */
+export interface ShowdownResult {
+  /** Completed lines on the revealed board; 0 for a seat that never revealed. */
+  lines: number;
+  /** 1-based call index of the fifth line, null when never reached. */
+  bingoAt: number | null;
+  /** True for every seat the contract's settle rule pays. */
+  winner: boolean;
+}
+
+/**
+ * Mirror of the contract's settle verdict, for display: replay the frozen
+ * calls against every revealed board. The earliest fifth line wins, equal
+ * indexes tie, and when nobody reached five lines the most completed lines
+ * win among revealed boards. A null board (never revealed) is excluded and
+ * can never win; if nobody revealed, nobody wins.
+ */
+export function resolveShowdown(
+  boards: Record<string, number[] | null>,
+  calls: number[],
+  calledMask: number
+): Record<string, ShowdownResult> {
+  const results: Record<string, ShowdownResult> = {};
+  for (const [key, board] of Object.entries(boards)) {
+    results[key] = board
+      ? {
+          lines: countCompletedLines(marks(board, calledMask)),
+          bingoAt: bingoIndex(board, calls),
+          winner: false,
+        }
+      : { lines: 0, bingoAt: null, winner: false };
+  }
+
+  const revealed = Object.keys(boards).filter((key) => boards[key] != null);
+  const indexes = revealed
+    .map((key) => results[key].bingoAt)
+    .filter((i): i is number => i !== null);
+
+  if (indexes.length > 0) {
+    const earliest = Math.min(...indexes);
+    for (const key of revealed) {
+      if (results[key].bingoAt === earliest) results[key].winner = true;
+    }
+  } else if (revealed.length > 0) {
+    const most = Math.max(...revealed.map((key) => results[key].lines));
+    for (const key of revealed) {
+      if (results[key].lines === most) results[key].winner = true;
+    }
+  }
+  return results;
+}
