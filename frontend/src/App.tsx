@@ -68,6 +68,7 @@ export default function App() {
         )}
         {route.name === "arena" && (
           <GameRoom
+            key={route.id}
             arenaId={route.id}
             address={wallet.address}
             onBack={() => navigate("#/")}
