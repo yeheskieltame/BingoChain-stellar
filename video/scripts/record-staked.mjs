@@ -55,6 +55,9 @@ const FEE_BPS = 200n; // matches deployment.json; pool = total minus this fee.
 // to read on screen.
 const BEAT_MS = 900;
 const SHORT_BEAT_MS = 500;
+// Hold on the settled showdown (all boards open, winner badge and pot line
+// up) long enough for the film to breathe on it.
+const SHOWDOWN_LINGER_MS = 6000;
 const FINAL_LINGER_MS = 12000;
 const POLL_MS = 1200;
 const CHAIN_CONFIRM_TIMEOUT_MS = 90000;
@@ -718,18 +721,16 @@ async function attempt(attemptNumber) {
     cue.once("claimed");
     console.log("  bingo claimed, reveal phase open");
 
-    // 7. Reveal. Rivals headless, then settle. The hero reveals with its own
-    // key: revealed_board_of returns null (not undefined) for a player who has
-    // not revealed, and the app's GameRoom tests `!== undefined`, so it marks
-    // every seat "revealed" the instant the reveal phase opens and hides the
-    // "reveal your board" button after a sub-second render window. We click that
-    // button if we catch it, and otherwise reveal the hero headlessly with the
-    // hero key so it still reveals its own board. A real revealed board is a
-    // Buffer, so on-chain checks use `!= null`.
+    // 7. Reveal. Hero through the RevealPanel UI, rivals headless, then settle.
+    // Older app builds hid the "reveal your board" button the instant the
+    // reveal phase opened (a null-vs-undefined slip on revealed_board_of,
+    // fixed since commit 73c0b24), so the click loop below starts immediately
+    // and a headless reveal signed with the hero key remains as a fallback in
+    // case the button ever becomes unreachable again. On-chain reveal checks
+    // use `!= null`: the bindings decode an absent Option as null, and a real
+    // revealed board is a Buffer.
     await page.locator(".countdown").waitFor({ state: "visible", timeout: DOM_WAIT_MS });
     cue.once("reveal-panel");
-    // No beat here: the reveal button is only live for a sub-second window
-    // before the app hides it, so start hunting for it immediately.
 
     const heroRevealedOnChain = async () => (await revealedBoardOf(arenaId, heroPk)) != null;
     const heroRevealButton = page.getByRole("button", { name: /reveal your board/i });
@@ -746,7 +747,7 @@ async function attempt(attemptNumber) {
     }
     let heroRevealed = await pollUntil(heroRevealedOnChain, clickedReveal ? CHAIN_CONFIRM_TIMEOUT_MS : 3000, 1500);
     if (!heroRevealed) {
-      console.log("  reveal button unreachable (app marks all seats revealed early), revealing hero headlessly");
+      console.log("  reveal button unreachable, revealing hero headlessly with the hero key");
       await sendWrite(
         await heroClient.reveal_board({
           arena_id: arenaId,
@@ -798,7 +799,37 @@ async function attempt(attemptNumber) {
       return { win: false, cues, arenaId, videoPending: true };
     }
 
-    // 8. Withdraw. The earnings card credits, the hero pulls it, the header
+    // 8. The showdown: at settlement the app opens every revealed board as a
+    // mini card with marks and line counts, crowns the winner with a brass
+    // badge, and sums up the pot. Wait for the "opening the boards" skeletons
+    // to resolve into all three real mini boards plus the winner badge, scroll
+    // the panel fully into view, and hold on it so the film can linger.
+    const showdownPainted = () =>
+      page.evaluate(() => {
+        const panel = document.querySelector(".showdown-panel");
+        if (!panel) return false;
+        if (panel.querySelector(".skel")) return false;
+        const minis = panel.querySelectorAll(".card-grid--mini").length;
+        const winnerBadge = !!panel.querySelector(".badge--winner");
+        const potLine = !!panel.querySelector(".call-note");
+        return minis === 3 && winnerBadge && potLine;
+      });
+    const painted = await pollUntil(showdownPainted, DOM_WAIT_MS, 500);
+    if (!painted) throw new Error("the showdown never finished loading its boards");
+    await page.evaluate(() => {
+      document
+        .querySelector(".showdown-panel")
+        .scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    await sleep(1200); // let the smooth scroll settle before the cue lands
+    cue.once("showdown-visible");
+    console.log("  showdown visible: three boards open, winner badge up");
+    await sleep(SHOWDOWN_LINGER_MS);
+    // Glide back up to the earnings card for the withdraw beat.
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    await sleep(1200);
+
+    // 9. Withdraw. The earnings card credits, the hero pulls it, the header
     // balance ticks up.
     await sleep(BEAT_MS);
     const withdrawButton = page.getByRole("button", { name: /withdraw/i });

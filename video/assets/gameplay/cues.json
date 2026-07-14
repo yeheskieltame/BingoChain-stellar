@@ -1,99 +1,103 @@
 {
-  "heroAddress": "GCDY7SOGOQJ6NKPJY54ONWNQX4FJPKBOQWVFX4WP7YPIB64TBLJVO4AJ",
-  "arenaId": 14,
+  "heroAddress": "GCOUT2C6FYXXV53FA3JKMKYQ7UFVBTOIRUQNN6X4S656IQ6I66PNQWBA",
+  "arenaId": 15,
   "cues": [
     {
       "label": "lobby-open",
-      "tMs": 184
+      "tMs": 207
     },
     {
       "label": "create-form",
-      "tMs": 2044
+      "tMs": 2064
     },
     {
       "label": "arena-created",
-      "tMs": 5896
+      "tMs": 7947
     },
     {
       "label": "board-setup",
-      "tMs": 6802
+      "tMs": 8854
     },
     {
       "label": "committed",
-      "tMs": 16524
+      "tMs": 17012
     },
     {
       "label": "rival-1-joined",
-      "tMs": 21467
+      "tMs": 21838
     },
     {
       "label": "rival-2-joined",
-      "tMs": 26835
+      "tMs": 27033
     },
     {
       "label": "ready",
-      "tMs": 27740
+      "tMs": 27892
     },
     {
       "label": "first-call",
-      "tMs": 30777
+      "tMs": 29641
     },
     {
       "label": "first-strike",
-      "tMs": 75621
+      "tMs": 79051
     },
     {
       "label": "meter-2",
-      "tMs": 111831
+      "tMs": 122652
     },
     {
       "label": "meter-3",
-      "tMs": 116737
+      "tMs": 122653
     },
     {
       "label": "meter-4",
-      "tMs": 121372
+      "tMs": 132312
     },
     {
       "label": "bingo",
-      "tMs": 151941
+      "tMs": 143273
     },
     {
       "label": "auto-claim",
-      "tMs": 151942
+      "tMs": 143274
     },
     {
       "label": "claimed",
-      "tMs": 156961
+      "tMs": 147126
     },
     {
       "label": "reveal-panel",
-      "tMs": 156963
+      "tMs": 147904
     },
     {
       "label": "hero-revealed",
-      "tMs": 160981
+      "tMs": 152356
     },
     {
       "label": "rivals-revealed",
-      "tMs": 170841
+      "tMs": 163059
     },
     {
       "label": "settle-clicked",
-      "tMs": 171765
+      "tMs": 165494
     },
     {
       "label": "settled",
-      "tMs": 176686
+      "tMs": 171879
+    },
+    {
+      "label": "showdown-visible",
+      "tMs": 174244
     },
     {
       "label": "withdraw-clicked",
-      "tMs": 178246
+      "tMs": 182367
     },
     {
       "label": "withdrawn",
-      "tMs": 184123
+      "tMs": 189959
     }
   ],
-  "totalMs": 196123
+  "totalMs": 201959
 }
