@@ -44,6 +44,15 @@ export const Scene6: React.FC = () => {
         />
       </AbsoluteFill>
 
+      {/* Darkened center so the type zone never fights the burst. */}
+      <AbsoluteFill
+        style={{
+          background:
+            "radial-gradient(ellipse 62% 52% at 50% 54%, rgba(13,31,21,0.88) 0%, rgba(13,31,21,0.55) 48%, rgba(13,31,21,0) 78%)",
+          opacity: burstOpacity,
+        }}
+      />
+
       <ComicTexture halftone={0.12} />
 
       {/* Title stack. */}
@@ -70,12 +79,25 @@ export const Scene6: React.FC = () => {
           >
             BINGOCHAIN STELLAR
           </div>
-          <div style={{ width: 640, height: 8, backgroundColor: palette.brass, margin: "34px 0 30px" }} />
-          <div style={{ fontFamily: mono, fontSize: 46, color: palette.brass, letterSpacing: 2 }}>
-            bingochain-stellar.vercel.app
-          </div>
-          <div style={{ fontFamily: mono, fontSize: 30, color: palette.bone, marginTop: 22, opacity: 0.85 }}>
-            Practice free. No wallet needed.
+          <div style={{ width: 640, height: 8, backgroundColor: palette.brass, margin: "34px 0 36px" }} />
+          {/* Solid plate keeps the URL legible over the burst art. */}
+          <div
+            style={{
+              backgroundColor: "rgba(13, 31, 21, 0.92)",
+              borderTop: `3px solid ${palette.brass}`,
+              borderBottom: `3px solid ${palette.brass}`,
+              padding: "30px 72px 34px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ fontFamily: mono, fontSize: 54, color: palette.bone, letterSpacing: 4 }}>
+              bingochain-stellar.vercel.app
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 30, color: palette.bone, marginTop: 20, opacity: 0.78 }}>
+              Practice free. No wallet needed.
+            </div>
           </div>
         </div>
       </AbsoluteFill>
