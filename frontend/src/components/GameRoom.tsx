@@ -43,12 +43,25 @@ function addOrdinal(n: number): string {
 export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRoomProps) {
   const { arena, loading, error, myReveal, refresh } = useArena(arenaId, address);
   // Every seat's revealed board, kept whole for the showdown: null once
-  // fetched and absent, missing while still unfetched.
+  // fetched and absent, key missing while still unfetched. The distinction
+  // matters: a missing key must never read as a forfeit.
   const [revealedBoards, setRevealedBoards] = useState<Record<string, number[] | null>>({});
+  const [boardsError, setBoardsError] = useState(false);
+  const [boardsRetry, setBoardsRetry] = useState(0);
+
+  // The component survives navigation between arenas; boards are keyed by
+  // player address, so wipe them on arena change or a seat shared across
+  // two tables could briefly pass the fetched gate with a stale board.
+  useEffect(() => {
+    setRevealedBoards({});
+    setBoardsError(false);
+  }, [arenaId]);
 
   // Per-player reveals only matter once calling has stopped. Fetched fresh
   // whenever the arena object changes: every event tick and every manual
-  // refresh produce a new arena reference, which reruns this.
+  // refresh produce a new arena reference, which reruns this. Settled is
+  // terminal with no further ticks, so a failed fetch surfaces an error
+  // with a retry (boardsRetry) instead of silently staying empty.
   useEffect(() => {
     if (!arena) return;
     if (arena.state.tag !== "Revealing" && arena.state.tag !== "Settled") return;
@@ -57,20 +70,27 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
     const client = arenaClient();
     Promise.all(
       arena.players.map((p) => client.revealed_board_of({ arena_id: arena.id, player: p }).then((tx) => tx.result))
-    ).then((boards) => {
-      if (cancelled) return;
-      const next: Record<string, number[] | null> = {};
-      arena.players.forEach((p, i) => {
-        // The generated bindings decode an absent Option as null, not undefined.
-        const board = boards[i];
-        next[p] = board != null ? Array.from(board) : null;
+    )
+      .then((boards) => {
+        if (cancelled) return;
+        const next: Record<string, number[] | null> = {};
+        arena.players.forEach((p, i) => {
+          // The generated bindings decode an absent Option as null, not undefined.
+          const board = boards[i];
+          next[p] = board != null ? Array.from(board) : null;
+        });
+        setRevealedBoards(next);
+        setBoardsError(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        console.error("Failed to fetch revealed boards:", err);
+        setBoardsError(true);
       });
-      setRevealedBoards(next);
-    });
     return () => {
       cancelled = true;
     };
-  }, [arena]);
+  }, [arena, boardsRetry]);
 
   function handleChanged() {
     refresh();
@@ -135,7 +155,14 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
             />
             <PlayersPanel arena={arena} address={address} revealStatus={revealStatus} />
           </div>
-          <ShowdownPanel arena={arena} address={address} boards={revealedBoards} final={false} />
+          <ShowdownPanel
+            arena={arena}
+            address={address}
+            boards={revealedBoards}
+            final={false}
+            error={boardsError}
+            onRetry={() => setBoardsRetry((k) => k + 1)}
+          />
         </>
       )}
 
@@ -153,7 +180,14 @@ export default function GameRoom({ arenaId, address, onBack, onChanged }: GameRo
               above. Every revealed board is open below.
             </p>
           </div>
-          <ShowdownPanel arena={arena} address={address} boards={revealedBoards} final />
+          <ShowdownPanel
+            arena={arena}
+            address={address}
+            boards={revealedBoards}
+            final
+            error={boardsError}
+            onRetry={() => setBoardsRetry((k) => k + 1)}
+          />
         </>
       )}
 
@@ -538,30 +572,75 @@ function CallSheet({
  * The showdown: every seat's revealed board face up, with the verdict
  * mirrored from the contract's settle rule. During the reveal window it
  * shows whatever is open so far without naming winners; at settlement the
- * winner badges and forfeit wording land.
+ * winner badges and forfeit wording land. The verdict is gated on data:
+ * until every seat's board fetch has answered, nothing may read as a
+ * forfeit, and a failed fetch shows a retry instead of a false verdict.
  */
 function ShowdownPanel({
   arena,
   address,
   boards,
   final,
+  error,
+  onRetry,
 }: {
   arena: Arena;
   address: string | null;
   boards: Record<string, number[] | null>;
   final: boolean;
+  error: boolean;
+  onRetry(): void;
 }) {
+  // A key missing from boards means the fetch has not answered for that
+  // seat; null means answered and absent. Only null may read as a forfeit.
+  const fetched = arena.players.every((p) => p in boards);
   const anyRevealed = arena.players.some((p) => boards[p] != null);
+  const pot = stroopsToXlm(arena.stake * BigInt(arena.players.length));
+
+  if (!fetched) {
+    if (!final && !error) return null;
+    return (
+      <section className="panel showdown-panel">
+        <p className="panel-label">showdown</p>
+        {error ? (
+          <>
+            <p className="call-note">The boards did not load. The verdict lives on chain either way.</p>
+            <button type="button" className="btn btn--ghost" onClick={onRetry}>
+              retry
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="call-note" role="status">
+              {pot} XLM pot, opening the boards
+            </p>
+            <div className="showdown-grid" aria-hidden>
+              {arena.players.map((p) => (
+                <div key={p} className="showdown-card">
+                  <span className="skel skel--id" />
+                  <span className="skel skel--board" />
+                  <span className="skel skel--seats" />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
   if (!final && !anyRevealed) return null;
 
   const calls = Array.from(arena.call_sequence);
   const seatBoards = Object.fromEntries(arena.players.map((p) => [p, boards[p] ?? null]));
   const results = resolveShowdown(seatBoards, calls, arena.called_mask);
   const winners = arena.players.filter((p) => results[p].winner);
-  const pot = stroopsToXlm(arena.stake * BigInt(arena.players.length));
+  const allOpen = arena.players.every((p) => seatBoards[p] != null);
 
   const potLine = !final
-    ? `${pot} XLM pot, verdict comes at settlement`
+    ? allOpen
+      ? `${pot} XLM pot, all boards open, settle to pay out`
+      : `${pot} XLM pot, verdict comes at settlement`
     : winners.length > 1
       ? `${pot} XLM pot, split ${winners.length} ways after the protocol fee`
       : winners.length === 1
@@ -583,6 +662,7 @@ function ShowdownPanel({
         calls={calls}
         calledMask={arena.called_mask}
         final={final}
+        results={results}
       />
     </section>
   );

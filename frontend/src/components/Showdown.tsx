@@ -1,4 +1,4 @@
-import { completedLineIndexes, marks, resolveShowdown } from "../lib/board";
+import { completedLineIndexes, marks, resolveShowdown, type ShowdownResult } from "../lib/board";
 import { LineStrikes } from "./BingoMeter";
 import { TrophyIcon } from "./Icons";
 
@@ -25,14 +25,15 @@ interface ShowdownProps {
   /** True once the table is settled: winner badges and forfeit wording show.
    * During the reveal window the verdict is still open, so neither does. */
   final: boolean;
+  /** Precomputed verdict, when the caller already resolved it (GameRoom's
+   * pot line needs it too); computed here otherwise. */
+  results?: Record<string, ShowdownResult>;
 }
 
-export function Showdown({ seats, calls, calledMask, final }: ShowdownProps) {
-  const results = resolveShowdown(
-    Object.fromEntries(seats.map((seat) => [seat.key, seat.board])),
-    calls,
-    calledMask
-  );
+export function Showdown({ seats, calls, calledMask, final, results: given }: ShowdownProps) {
+  const results =
+    given ??
+    resolveShowdown(Object.fromEntries(seats.map((seat) => [seat.key, seat.board])), calls, calledMask);
 
   return (
     <div className="showdown-grid">
