@@ -1,49 +1,99 @@
 {
+  "heroAddress": "GCDY7SOGOQJ6NKPJY54ONWNQX4FJPKBOQWVFX4WP7YPIB64TBLJVO4AJ",
+  "arenaId": 14,
   "cues": [
     {
       "label": "lobby-open",
-      "tMs": 209
+      "tMs": 184
     },
     {
-      "label": "practice-open",
-      "tMs": 3251
+      "label": "create-form",
+      "tMs": 2044
     },
     {
-      "label": "setup-done",
-      "tMs": 6319
+      "label": "arena-created",
+      "tMs": 5896
+    },
+    {
+      "label": "board-setup",
+      "tMs": 6802
+    },
+    {
+      "label": "committed",
+      "tMs": 16524
+    },
+    {
+      "label": "rival-1-joined",
+      "tMs": 21467
+    },
+    {
+      "label": "rival-2-joined",
+      "tMs": 26835
+    },
+    {
+      "label": "ready",
+      "tMs": 27740
     },
     {
       "label": "first-call",
-      "tMs": 7741
+      "tMs": 30777
     },
     {
       "label": "first-strike",
-      "tMs": 12643
+      "tMs": 75621
     },
     {
       "label": "meter-2",
-      "tMs": 15509
+      "tMs": 111831
     },
     {
       "label": "meter-3",
-      "tMs": 18359
+      "tMs": 116737
     },
     {
       "label": "meter-4",
-      "tMs": 19785
+      "tMs": 121372
     },
     {
       "label": "bingo",
-      "tMs": 20092
+      "tMs": 151941
     },
     {
       "label": "auto-claim",
-      "tMs": 20093
+      "tMs": 151942
+    },
+    {
+      "label": "claimed",
+      "tMs": 156961
+    },
+    {
+      "label": "reveal-panel",
+      "tMs": 156963
+    },
+    {
+      "label": "hero-revealed",
+      "tMs": 160981
+    },
+    {
+      "label": "rivals-revealed",
+      "tMs": 170841
+    },
+    {
+      "label": "settle-clicked",
+      "tMs": 171765
     },
     {
       "label": "settled",
-      "tMs": 21526
+      "tMs": 176686
+    },
+    {
+      "label": "withdraw-clicked",
+      "tMs": 178246
+    },
+    {
+      "label": "withdrawn",
+      "tMs": 184123
     }
   ],
-  "totalMs": 36526
+  "totalMs": 196123
 }
