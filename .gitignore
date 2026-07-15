@@ -17,3 +17,6 @@ node_modules/
 
 # Orchestration scratch (not part of the deliverable)
 .superpowers/
+
+# Film production rig (local only, see README for the rendered video)
+/video/

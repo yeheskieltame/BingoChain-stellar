@@ -4,6 +4,11 @@
 
 Live app: https://bingochain-stellar.vercel.app (try the free practice table at [/#/practice](https://bingochain-stellar.vercel.app/#/practice), no wallet needed)
 
+Demo video, a real three player staked game on testnet from lobby to payout,
+ending on the open-boards showdown:
+
+[![BingoChain Stellar demo video](https://img.youtube.com/vi/kBxpzvzHYR4/maxresdefault.jpg)](https://youtu.be/kBxpzvzHYR4)
+
 BingoChain Stellar is a two to six player bingo game that settles entirely on
 a Soroban smart contract on Stellar testnet. Every player arranges the same
 25 numbers on their own 5x5 board and seals it with a commitment before play
@@ -34,37 +39,33 @@ and a player with no revealed board simply cannot win.
 
 ## Architecture
 
-```
-  Player A: Freighter           Player B: Freighter
-           |  sign                       |  sign
-           v                             v
- +--------------------------------------------------+
- |           frontend (React + Vite + TS)           |
- | lib/wallet.ts    lib/commit.ts    lib/errors.ts  |
- | lib/horizon.ts   lib/contract.ts  lib/events.ts  |
- +---------+-----------------------------+----------+
-           |                             |
-  balance, classic payments   simulate, sign, submit,
-           |                      poll getEvents
-           v                             v
-  +------------------+        +----------------------+
-  |     Horizon      |        |     Soroban RPC      |
-  |    (testnet)     |        |      (testnet)       |
-  +------------------+        +-----------+----------+
-                                          |
-                                          v
-                        +----------------------------------+
-                        |      bingo contract (Rust)       |
-                        |   create_arena, commit_board,    |
-                        |    call_number, claim_bingo,     |
-                        |  reveal_board, settle, withdraw  |
-                        +---------------+------------------+
-                                        |  token::Client transfer
-                                        v
-                        +----------------------------------+
-                        |     native XLM Stellar Asset     |
-                        |   Contract (escrow and payout)   |
-                        +----------------------------------+
+```mermaid
+flowchart TD
+    A["Player A<br/>Freighter"]
+    B["Player B<br/>Freighter"]
+    FE["frontend, React + Vite + TS<br/>wallet, commit, contract, events, errors"]
+    H["Horizon, testnet<br/>balance and classic XLM payments"]
+    R["Soroban RPC, testnet<br/>simulate, sign, submit, poll getEvents"]
+    C["bingo contract, Rust<br/>create_arena, commit_board, call_number,<br/>claim_bingo, reveal_board, settle, withdraw"]
+    X["native XLM Stellar Asset Contract<br/>escrow and payout"]
+
+    A -- sign --> FE
+    B -- sign --> FE
+    FE -- Level 1 --> H
+    FE -- Levels 2 and 3 --> R
+    R --> C
+    C -- token transfer --> X
+
+    classDef paper fill:#e9dfc6,stroke:#25341f,color:#25341f
+    classDef panel fill:#17301f,stroke:#d5aa52,color:#ede5cd
+    classDef felt fill:#0d1f15,stroke:#d5aa52,color:#ede5cd
+    classDef lacquer fill:#8f3220,stroke:#d5aa52,color:#f2ead4
+    classDef brass fill:#d5aa52,stroke:#25341f,color:#25341f
+    class A,B paper
+    class FE panel
+    class H,R felt
+    class C lacquer
+    class X brass
 ```
 
 Level 1 traffic (wallet connect, balance, plain XLM sends) goes through
@@ -98,7 +99,7 @@ cargo build --target wasm32v1-none --release -p bingo
 ```bash
 cd frontend
 pnpm install
-pnpm test        # vitest, frontend/src/lib/commit.test.ts and errors.test.ts
+pnpm test        # vitest, 52 tests across frontend/src/lib/*.test.ts
 pnpm typecheck
 pnpm build
 ```
@@ -162,18 +163,46 @@ the settlement replay. Start there before staking anything.
 | Transaction status through build, sign, submit | `frontend/src/lib/tx.ts`, `frontend/src/hooks/useTx.ts` (shared with Level 1) |
 | A lobby that creates and lists staked arenas, and a sealed board commitment before joining | `frontend/src/components/Lobby.tsx`, `CreateArenaForm.tsx`, `BoardSetup.tsx`, `frontend/src/lib/commit.ts` |
 
-### Level 3: gameplay, events, ops, and tests
+### Level 3: the ten requirements, one by one
 
 | Requirement | Where it lives |
 | --- | --- |
-| Advanced contract logic: turn-based calls, claim, commit-reveal verification, replay-based settlement, pull-payment withdrawals | `contracts/bingo/src/lib.rs`, `board.rs` |
-| Inter-contract communication: stakes and payouts move through the native XLM Stellar Asset Contract | `token::Client::new(...).transfer` calls inside `commit_board` (stake escrow in) and `withdraw` (payout out); `settle` only assigns earnings that `withdraw` then pays |
-| Live event streaming drives the UI instead of polling game state | `frontend/src/lib/events.ts`, `frontend/src/hooks/useArena.ts`, `frontend/src/components/GameRoom.tsx` |
-| CI on every push and pull request: format, lint, test, build for contract and frontend | `.github/workflows/ci.yml` |
-| A repeatable, idempotent deploy workflow | `scripts/deploy.sh` |
-| Mobile-first responsive design, loading and error states, no layout jumps | `frontend/src/styles.css`, component markup across `frontend/src/components` |
-| Contract tests and frontend unit tests | `contracts/bingo/src/test.rs` (36 tests), `frontend/src/lib/commit.test.ts`, `frontend/src/lib/errors.test.ts`, `frontend/src/lib/practice.test.ts` |
-| Documentation and a working demo script | this file |
+| Advanced smart contract development | `contracts/bingo/src/lib.rs`, `board.rs`: commit-reveal board secrecy, turn-based calls, replay-based settlement, pull-payment withdrawals, a time-gated escape hatch for stalled tables |
+| Inter-contract communication | `token::Client::new(...).transfer` calls into the native XLM Stellar Asset Contract inside `commit_board` (stake escrow in) and `withdraw` (payout out); `settle` only assigns earnings that `withdraw` then pays |
+| Event streaming and real-time updates | `frontend/src/lib/events.ts` (cursor-based `getEvents` polling that survives RPC hiccups), `frontend/src/hooks/useArena.ts`; rival joins, calls, and reveals land live in `GameRoom.tsx` |
+| CI/CD pipeline setup | `.github/workflows/ci.yml`: fmt, clippy, tests, wasm build for the contract; typecheck, tests, build for the frontend, on every push and pull request |
+| Smart contract deployment workflow | `scripts/deploy.sh`: builds, deploys with constructor args, records `deployment.json`, regenerates the TypeScript bindings; rerunnable |
+| Mobile responsive frontend development | `frontend/src/styles.css`, mobile-first, usable at 360 px; see the [screenshot](#submission-checklist) below |
+| Error handling and loading states | `frontend/src/lib/errors.ts` (wallet declined, wrong network, 18 named contract errors, network failure, unknown, each visually distinct), loading skeletons and empty states across `frontend/src/components` |
+| Writing tests for contracts and frontend | `contracts/bingo/src/test.rs` and `board.rs` (36 tests, exact-balance settlement assertions), `frontend/src/lib/*.test.ts` (52 tests: pinned commitment vector, error taxonomy, board math parity, a seeded 300 game engine simulation, showdown resolution) |
+| Production-ready architecture practices | Typed errors end to end, checks-effects-interactions and pull payments in the contract, generated bindings as the single client source of truth, no secrets in the frontend, CI gates on every push |
+| Documentation and demo presentation | This file, the [demo video](https://youtu.be/kBxpzvzHYR4), and the two player demo script below |
+
+## Submission checklist
+
+| Item | Evidence |
+| --- | --- |
+| Public GitHub repository | https://github.com/yeheskieltame/BingoChain-stellar |
+| README with complete documentation | this file |
+| Minimum 10 or more meaningful commits | 40+ commits on `main`, each one feature, fix, or test with a written body |
+| Live demo link | https://bingochain-stellar.vercel.app |
+| Contract deployment address | `CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW` ([explorer](https://stellar.expert/explorer/testnet/contract/CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW)) |
+| Transaction hash for contract interaction | deploy and constructor: [`6e91511b97b7307d7ebeef374d3efd541d8d57ac79a85e712272c6da42a670ce`](https://stellar.expert/explorer/testnet/tx/6e91511b97b7307d7ebeef374d3efd541d8d57ac79a85e712272c6da42a670ce); the [contract page](https://stellar.expert/explorer/testnet/contract/CDI5BKQK23UBJFWOO2T5UUVYKYA3ARIO7WXADVVU3HBL4ODCDORWQZBW) lists every gameplay interaction since |
+| Demo video link | https://youtu.be/kBxpzvzHYR4 |
+
+Screenshots:
+
+Mobile responsive UI (390 px, the practice table):
+
+<img src="docs/screenshots/mobile-ui.png" alt="Mobile UI at 390px" width="320" />
+
+CI/CD pipeline running (GitHub Actions, every run green):
+
+![CI pipeline](docs/screenshots/ci-pipeline.png)
+
+Test output, 52 frontend and 36 contract tests passing:
+
+![Test output](docs/screenshots/test-output.png)
 
 ## Live deployment (testnet)
 
